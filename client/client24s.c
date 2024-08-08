@@ -27,6 +27,41 @@ bool checkIPFormat(const char *ip) {
     }
 }
 
+void trimAndRemoveNewLine(char *input){
+    if(input[0] != '\0' && input != NULL){ //Check if first character is not empty, n has characters
+
+        //Index variables
+        int startIndex = 0;
+        int endIndex = strlen(input) - 1;
+
+        //Replace New lin with Null and updting endIndex as can be --> "dter \n"
+        if(input[endIndex] == '\n'){
+            input[endIndex] = '\0';
+            endIndex--;
+        }
+
+        // Identifying the spaces from index 0 and updating count
+        while (input[startIndex] == ' ') {
+            startIndex++;
+        }
+
+        // Identifying the spaces from last index nd updating count in revers
+        while (input[endIndex] == ' ') {
+            endIndex--;
+        }
+        
+        //Shifting the start and end index values to the start
+        int j = 0;
+        int i = startIndex;
+        while(i<= endIndex){
+            input[j] = input[i];
+            j++;
+            i++;
+        }
+        input[j] = '\0'; //Null terminator mst be added to strings
+    }
+} 
+
 int main(int argc, char *argv[]){
 
     int server;
@@ -70,21 +105,27 @@ int main(int argc, char *argv[]){
         exit(3);
     }
 
+    printf("Select any of the commands to run on the smain server: \n");
+    printf("1. Upload a file to specific path. $ ufile <filename> <destination_path>\n");
+    printf("2. Download a file from Server. $ dfile <filename>\n");
+    printf("3. Delete file from server. $ rmfile <filename>\n");
+    printf("4. Create and download tar file of .c .txt .pdf file types. $ dtar <file extesion>\n");
+    printf("5. Display directory files on the server. $ display <directory_path>\n");
+    printf("Please note 'file names' and 'paths' must be a tilde expansion path\n");
+
     while(1){ //Infinite loop start
 
         //Write message to the server
         char buffer[1024];
-        printf("Enter the message to be sent to the server: \n");
-        //scanf("%s", &buffer);
-        fgets(buffer, sizeof(buffer), stdin);
-        //scanf("%1023s", buffer); // Length validation
+        char userCommand[1024];
+
+        printf("Enter command: \n");
+        fgets(userCommand, sizeof(userCommand), stdin);
+
+        trimAndRemoveNewLine(userCommand); 
+        printf("User Command: %s\n", userCommand);
         
-        // Remove newline character if present
-        size_t len = strlen(buffer);
-        if (len > 0 && buffer[len - 1] == '\n') {
-            buffer[len - 1] = '\0';
-        }
-        write(server, buffer, strlen(buffer) + 1); // Include null terminator in write
+        write(server, userCommand, strlen(userCommand) + 1); // Include null terminator in write
 
 
         //Read from pipe and display
