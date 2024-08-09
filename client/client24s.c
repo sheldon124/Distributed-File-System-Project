@@ -62,20 +62,20 @@ void trimAndRemoveNewLine(char *input){
     }
 } 
 
-void parseInput(char *input, char **argv, int *argc) {
+void parseInput(char *input, char **commandArgv, int *commandArgc) {
     int index = 0;
     char *currentCmd;
     //Iterates and seperate the commands based on " " identified
     while ((currentCmd = strsep(&input, " ")) != NULL) { 
         if (*currentCmd != '\0') { //Empty check
-            argv[index] = currentCmd; //Adds cCarrent cmmand in argv
+            commandArgv[index] = currentCmd; //Adds cCarrent cmmand in argv
             //printf("Arg Index---> %s\n", argv[index]);
             index++;
         }
     }
 
-    argv[index] = NULL; // Addin Null terminate the last index is necessaru
-    *argc = index; //Assigning the value of index as count ref
+    commandArgv[index] = NULL; // Addin Null terminate the last index is necessaru
+    *commandArgc = index; //Assigning the value of index as count ref
 }
 
 bool checkFileExtension(const char *file){
@@ -134,57 +134,62 @@ bool checkTildePath(const char *path){
     return true;
 }
 
-void checkInput(char **argv, int argc){
-    if(argc < 1){
-        return;
+bool checkInput(char **commandArgv, int commandArgc){
+    if(commandArgc < 1){
+        return false;
     }
 
-    printf("argc = %d\n", argc);
-    for (int i = 0; i < argc; i++) {
-        printf("argv[%d] = %s\n", i, argv[i]);
-    }
+    // printf("argc = %d\n", argc);
+    // for (int i = 0; i < argc; i++) {
+    //     printf("commandArgv[%d] = %s\n", i, commandArgv[i]);
+    // }
 
-    if(strcmp(argv[0], "ufile") == 0){
+    if(strcmp(commandArgv[0], "ufile") == 0){
 
         //Check the second arg is a file and has correct file extension
-        if(!checkFileExtension(argv[1])){
+        if(!checkFileExtension(commandArgv[1])){
             printf("Second command must be a file with extension, like sample.c\n");
             printf("Note: Only .c .pdf .txt files allowed\n");
-            return;
+            return false;
         }
 
         //Check the tilde expansion path
-        if(!checkTildePath(argv[2])){
+        if(!checkTildePath(commandArgv[2])){
             printf("Second command must be a path, like ~smain/folder1/folder2\n");
             printf("Note: path must begin with ~smain \n");
-            return;
+            return false;
         }
     }
-    else if(strcmp(argv[0], "dfile") == 0  || strcmp(argv[0], "rmfile") == 0 || strcmp(argv[0], "display") == 0 ){
+    else if(strcmp(commandArgv[0], "dfile") == 0  || strcmp(commandArgv[0], "rmfile") == 0 || strcmp(commandArgv[0], "display") == 0 ){
         //Check the tilde expansion path
-        if(!checkTildePath(argv[1])){
+        if(!checkTildePath(commandArgv[1])){
             printf("Second command must be a path, like ~smain/folder1/folder2\n");
             printf("Note: path must begin with ~smain \n");
-            return;
+            return false;
         }
     }
-    else if(strcmp(argv[0], "dtar") == 0){
-        if (strcmp(argv[1], ".c") != 0 && strcmp(argv[1], ".pdf") != 0 && strcmp(argv[1], ".c") != 0) {
-            printf("Invalid extension '%s'. Please enter '.txt', '.pdf', or '.c'.\n", argv[1]);
-            return;
+    else if(strcmp(commandArgv[0], "dtar") == 0){
+        if (strcmp(commandArgv[1], ".c") != 0 && strcmp(commandArgv[1], ".pdf") != 0 && strcmp(commandArgv[1], ".c") != 0) {
+            printf("Invalid extension '%s'. Please enter '.txt', '.pdf', or '.c'.\n", commandArgv[1]);
+            return false;
         }
     }else{
         printf("Invalid command passed.\n");
-        return;
+        return false;
     }
+
+    return true;
 }
 
 int main(int argc, char *argv[]){
 
     int server;
     int portNumber;
-    char message[1024];
+    char message[MAXSIZE];
     struct sockaddr_in servAdd;
+    char userCommand[MAXSIZE];
+    int commandArgc  = 0;
+    char *commandArgv[200]; 
 
     //Check if User provided IP and PORT Number
     if(argc != 3){
@@ -197,13 +202,13 @@ int main(int argc, char *argv[]){
     if(!checkIPFormat(argv[1])){
         printf("Incorrect IP Address.\n");
         printf("To know your current IP Address in terminal type $ hostname -i \n");
-        exit(0);
+        exit(1);
     }
 
     //Create Socket
     if( (server = socket(AF_INET, SOCK_STREAM, 0)) < 0 ){
         printf("Failed to create Socket.\n");
-        exit(1);
+        exit(2);
     }
 
     //Connecting IP and PORT Number on Server Object.
@@ -213,15 +218,16 @@ int main(int argc, char *argv[]){
 
     if( inet_pton(AF_INET, argv[1], &servAdd.sin_addr) < 0 ){ //IP Address Connection
         printf("inet_pton() failure.\n");
-        exit(2);
+        exit(3);
     }
 
     //Connect System Call
     if(connect(server, (struct sockaddr *) &servAdd,sizeof(servAdd))<0){//Connect()
         printf("connect() failure.\n");
-        exit(3);
+        exit(4);
     }
 
+    //Display available commands
     printf("Select any of the commands to run on the smain server: \n");
     printf("1. Upload a file to specific path. $ ufile <filename> <destination_path>\n");
     printf("2. Download a file from Server. $ dfile <filename>\n");
@@ -231,36 +237,42 @@ int main(int argc, char *argv[]){
     printf("Please note 'file names' and 'paths' must be a tilde expansion path\n");
 
     while(1){ //Infinite loop start
+        bool validInput = false;
 
-        //Write message to the server
-        char userCommand[1024];
+        while(!validInput){
+            printf("Enter command: \n");
+            fgets(userCommand, sizeof(userCommand), stdin);
 
-        printf("Enter command: \n");
-        fgets(userCommand, sizeof(userCommand), stdin);
+            trimAndRemoveNewLine(userCommand); 
+            printf("User Command: %s\n", userCommand);
 
-        trimAndRemoveNewLine(userCommand); 
-        printf("User Command: %s\n", userCommand);
+            
+            parseInput(userCommand, commandArgv, &commandArgc);
 
-        
+            validInput = checkInput(commandArgv, commandArgc);
 
-        int argc = 0;
-        char *argv[1024]; 
-        parseInput(userCommand, argv, &argc);
+            // if(!validInput){
+            //     printf("Command is invalid. Please try again.\n");
+            // }
+        }
 
-        checkInput(argv, argc);
 
         //Converting argv into a single buffer
-        char buffer[1024];
+        char buffer[MAXSIZE];
         buffer[0] = '\0';
-        for (int i = 0; i < argc; i++) {
-            strcat(buffer, argv[i]);  
-            if (i < argc - 1) {
+        for (int i = 0; i < commandArgc; i++) {
+            strcat(buffer, commandArgv[i]);  
+            if (i < commandArgc - 1) {
                 strcat(buffer, " "); 
             }
         }
 
         //write(server, userCommand, strlen(userCommand) + 1); // Include null terminator in write
-        write(server, buffer, strlen(buffer) + 1);
+        ssize_t bytes_written = write(server, buffer, strlen(buffer) + 1); // Include null terminator in write
+        if (bytes_written < 0) {
+            printf("Client: write() failure\n");
+            exit(4);
+        }
 
         //Read from pipe and display
         int bytes_read = read(server, message, MAXSIZE - 1);
