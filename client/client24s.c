@@ -160,7 +160,29 @@ bool checkInput(char **commandArgv, int commandArgc){
             return false;
         }
     }
-    else if(strcmp(commandArgv[0], "dfile") == 0  || strcmp(commandArgv[0], "rmfile") == 0 || strcmp(commandArgv[0], "display") == 0 ){
+    else if(strcmp(commandArgv[0], "dfile") == 0 ){
+        //Check the tilde expansion path
+        if(!checkTildePath(commandArgv[1])){
+            printf("Second command must be a path, like ~smain/folder1/folder2/sample.c\n");
+            printf("Note: path must begin with ~smain \n");
+            return false;
+        }
+
+        if(!checkFileExtension(commandArgv[1])){
+            printf("Second command must be a file with extension, like sample.c\n");
+            printf("Note: Only .c .pdf .txt files allowed\n");
+            return false;
+        }
+    }
+    else if(strcmp(commandArgv[0], "rmfile") == 0 ){
+        //Check the tilde expansion path
+        if(!checkTildePath(commandArgv[1])){
+            printf("Second command must be a path, like ~smain/folder1/folder2\n");
+            printf("Note: path must begin with ~smain \n");
+            return false;
+        }
+    }
+    else if(strcmp(commandArgv[0], "display") == 0 ){
         //Check the tilde expansion path
         if(!checkTildePath(commandArgv[1])){
             printf("Second command must be a path, like ~smain/folder1/folder2\n");
