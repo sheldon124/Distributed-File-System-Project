@@ -47,8 +47,8 @@ while(1) {
     int pid = fork();
     
     if (pid == 0) {
-    char buff1[50];
-    int bytes_read = read(client, buff1, 50);
+    char buff1[100];
+    int bytes_read = read(client, buff1, 100);
     if (bytes_read < 0) {
         printf("Server: read() failure\n");
         exit(3);

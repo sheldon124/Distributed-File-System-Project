@@ -11,7 +11,7 @@
 
 int connecttoserver(char* filename, char* servername) {
     int server;
-    char* port = "8081";
+    char* port = strcmp(servername, "pdf") == 0? "9533": "9534";
     char* ipaddr = "127.0.0.1";
     int portNumber;
     struct sockaddr_in servAdd;
@@ -21,23 +21,23 @@ int connecttoserver(char* filename, char* servername) {
         exit(1);
     }
 
-    sscanf(port, "%d", & portNumber);
+    sscanf(port, "%d", &portNumber);
 
     servAdd.sin_family = AF_INET; //Internet 
     servAdd.sin_port = htons((uint16_t) portNumber); //Port number
 
-    if (inet_pton(AF_INET, ipaddr, & servAdd.sin_addr) < 0) {
+    if (inet_pton(AF_INET, ipaddr, &servAdd.sin_addr) < 0) {
         fprintf(stderr, " inet_pton() has failed\n");
         exit(2);
     }
 
-    if (connect(server, (struct sockaddr* ) & servAdd, sizeof(servAdd)) < 0) { //Connect()
+    if (connect(server, (struct sockaddr* ) &servAdd, sizeof(servAdd)) < 0) { //Connect()
         fprintf(stderr, "connect() failed, exiting\n");
         perror("connect failed");
         exit(3);
     }
 
-    char  datatoserver = "This is test data sent to server";
+    char*  datatoserver = "This is test data sent to server";
 
     write(server, datatoserver, strlen(datatoserver));
 
@@ -137,7 +137,14 @@ while(1) {
         printf("Server: read() failure\n");
         exit(3);
     }
+
     handlecommand(buff1, client);
+
+
+    // to test pdf server connection
+    // if (strcmp(buff1, "pdf") == 0) {
+    //     connecttoserver("test", "pdf");
+    // }
     close(client);
     printf("\n");
     exit(0);
