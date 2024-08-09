@@ -62,6 +62,123 @@ void trimAndRemoveNewLine(char *input){
     }
 } 
 
+void parseInput(char *input, char **argv, int *argc) {
+    int index = 0;
+    char *currentCmd;
+    //Iterates and seperate the commands based on " " identified
+    while ((currentCmd = strsep(&input, " ")) != NULL) { 
+        if (*currentCmd != '\0') { //Empty check
+            argv[index] = currentCmd; //Adds cCarrent cmmand in argv
+            //printf("Arg Index---> %s\n", argv[index]);
+            index++;
+        }
+    }
+
+    argv[index] = NULL; // Addin Null terminate the last index is necessaru
+    *argc = index; //Assigning the value of index as count ref
+}
+
+bool checkFileExtension(const char *file){
+    if(file == NULL){
+        return false;
+    }
+
+    const char *pathExt = NULL;
+    for(int i = strlen(file); i>=0; i--){
+
+        // Identifying the first dot from reverse
+        if(file[i] == '.'){ //abc.pdf => .pdf
+            //Store in the pathExt variable
+            pathExt = &file[i];
+
+            break; // Exit the loop
+        }
+    }
+
+    // No dot found or the dot is the first character
+    if (pathExt == NULL || pathExt == file) {
+        return false; 
+    }
+
+    // Compare the extension with the allowed ones
+    if (strcmp(pathExt, ".txt") == 0 || strcmp(pathExt, ".pdf") == 0 || strcmp(pathExt, ".c") == 0) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+bool checkTildePath(const char *path){
+    if(path == NULL){
+        return false;
+    }
+
+    const char *prefix = "~smain";
+    size_t prefixLen = strlen(prefix);
+
+    //Check if path starts with ~smain
+    if (strncmp(path, prefix, prefixLen) != 0) {
+        return false;  
+    }
+
+    //Allow simple ~smain
+    if(path[prefixLen] == '\0' ){
+        return true;
+    }
+
+    //If there is any other character other then / after ~smain
+    if (path[prefixLen] != '/') {
+        return false; 
+    }
+
+    return true;
+}
+
+void checkInput(char **argv, int argc){
+    if(argc < 1){
+        return;
+    }
+
+    printf("argc = %d\n", argc);
+    for (int i = 0; i < argc; i++) {
+        printf("argv[%d] = %s\n", i, argv[i]);
+    }
+
+    if(strcmp(argv[0], "ufile") == 0){
+
+        //Check the second arg is a file and has correct file extension
+        if(!checkFileExtension(argv[1])){
+            printf("Second command must be a file with extension, like sample.c\n");
+            printf("Note: Only .c .pdf .txt files allowed\n");
+            return;
+        }
+
+        //Check the tilde expansion path
+        if(!checkTildePath(argv[2])){
+            printf("Second command must be a path, like ~smain/folder1/folder2\n");
+            printf("Note: path must begin with ~smain \n");
+            return;
+        }
+    }
+    else if(strcmp(argv[0], "dfile") == 0  || strcmp(argv[0], "rmfile") == 0 || strcmp(argv[0], "display") == 0 ){
+        //Check the tilde expansion path
+        if(!checkTildePath(argv[1])){
+            printf("Second command must be a path, like ~smain/folder1/folder2\n");
+            printf("Note: path must begin with ~smain \n");
+            return;
+        }
+    }
+    else if(strcmp(argv[0], "dtar") == 0){
+        if (strcmp(argv[1], ".c") != 0 && strcmp(argv[1], ".pdf") != 0 && strcmp(argv[1], ".c") != 0) {
+            printf("Invalid extension '%s'. Please enter '.txt', '.pdf', or '.c'.\n", argv[1]);
+            return;
+        }
+    }else{
+        printf("Invalid command passed.\n");
+        return;
+    }
+}
+
 int main(int argc, char *argv[]){
 
     int server;
@@ -116,7 +233,6 @@ int main(int argc, char *argv[]){
     while(1){ //Infinite loop start
 
         //Write message to the server
-        char buffer[1024];
         char userCommand[1024];
 
         printf("Enter command: \n");
@@ -124,9 +240,27 @@ int main(int argc, char *argv[]){
 
         trimAndRemoveNewLine(userCommand); 
         printf("User Command: %s\n", userCommand);
-        
-        write(server, userCommand, strlen(userCommand) + 1); // Include null terminator in write
 
+        
+
+        int argc = 0;
+        char *argv[1024]; 
+        parseInput(userCommand, argv, &argc);
+
+        checkInput(argv, argc);
+
+        //Converting argv into a single buffer
+        char buffer[1024];
+        buffer[0] = '\0';
+        for (int i = 0; i < argc; i++) {
+            strcat(buffer, argv[i]);  
+            if (i < argc - 1) {
+                strcat(buffer, " "); 
+            }
+        }
+
+        //write(server, userCommand, strlen(userCommand) + 1); // Include null terminator in write
+        write(server, buffer, strlen(buffer) + 1);
 
         //Read from pipe and display
         int bytes_read = read(server, message, MAXSIZE - 1);
