@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <fcntl.h>
 #include <unistd.h>
 #include <errno.h>
 #include <string.h>
@@ -203,6 +204,55 @@ bool checkInput(char **commandArgv, int commandArgc){
     return true;
 }
 
+int uploadfile(int socket, char* filename) {
+    int fd = open(filename, O_RDWR);
+    if(fd < 0) {
+        printf("\nfile does not exist\n");
+    }
+
+    int filelen = lseek(fd,0,SEEK_END);
+    lseek(fd,0,SEEK_SET);
+
+    char leninstr[50];
+
+    sprintf(leninstr, "%d", filelen);
+
+
+    int n;
+
+    // n= write(socket, leninstr, strlen(leninstr));
+    n= send(socket, leninstr, strlen(leninstr), 0);
+    
+    if(n < 0) {
+        printf("\nSend filesize to server failed\n");
+        close(fd);
+        return 1;
+    }
+
+    char confirmation[8];
+    int recvconfirm = recv(socket, confirmation, 8, 0);
+    if(recvconfirm < 0) {
+        printf("\nError uploading file\n");
+        close(fd);
+        return 1;
+    }
+
+    char readbuf[100];
+
+    int readbytes;
+    while ((readbytes = read(fd, readbuf, 100)) > 0) {
+        n = send(socket, readbuf, readbytes, 0);
+        if(n < 0) {
+            printf("\nWrite Failed\n");
+        }
+    }
+
+    printf("\nDone\n");
+
+    close(fd);
+    return 0;
+}
+
 int main(int argc, char *argv[]){
 
     int server;
@@ -294,6 +344,10 @@ int main(int argc, char *argv[]){
         if (bytes_written < 0) {
             printf("Client: write() failure\n");
             exit(4);
+        }
+
+        if(strcmp(commandArgv[0], "ufile") == 0) {
+            uploadfile(server, commandArgv[1]);
         }
 
         //Read from pipe and display

@@ -6,6 +6,7 @@
 #include <sys/types.h>
 #include <string.h> 
 #include <unistd.h>
+#include <fcntl.h>
 #include <sys/stat.h>
 
 
@@ -51,31 +52,29 @@ int handlecommand(char* userinput, int client) {
     char* mainfolder = "~smain";
     char* textfolder = "~stext";
     char* pdffolder = "~spdf";
-    char destpath[50];
+    char destpath[100];
     sscanf(userinput, "%s %s %s", cmd, filename, dest);
     printf("%s, %s, %s\n", cmd, filename, dest);
 
     // ufile command
     if (strcmp(cmd, "ufile") == 0) {
-        printf("Here\n");
 
         if(strncmp(dest, mainfolder, strlen(mainfolder)) == 0) {
             strcpy(destpath, dest + strlen(mainfolder) + 1);
-            printf("\nNew Path: %s\n", destpath);
 
             struct stat st;
             // Check if the directory exists
             if (stat(destpath, &st) != 0 || !S_ISDIR(st.st_mode)) {
                 // Directory does not exist, attempt to create it
-                printf("Directory no exist\n");
 
                 char newpath[100] = "";
                 int count = 0;
-                for (char* separator = strtok(destpath, "/"); separator != NULL; separator = strtok(NULL, "/"), count+=1) {
+                char temppath[100];
+                strcpy(temppath, destpath);
+                for (char* separator = strtok(temppath, "/"); separator != NULL; separator = strtok(NULL, "/"), count+=1) {
                     if(count!=0)
                     strcat(newpath, "/");
                     strcat(newpath, separator);
-                    printf("%s %s\n", separator, newpath);
                     if(stat(newpath, &st) != 0 || !S_ISDIR(st.st_mode)) {
                         if (mkdir(newpath, 0700) != 0) {
                             perror("mkdir failed");
@@ -84,10 +83,46 @@ int handlecommand(char* userinput, int client) {
                     }
 
                 }
-
-                printf("newpth: %s", newpath);
             }
         }
+
+        int filesize;
+        char filesizebuf[100];
+        // get size of file
+        int recbytes = read(client, filesizebuf, 100);
+        if (recbytes < 0) {
+            printf("\nError receiving filesize\n");
+            return 1;
+        }
+
+        filesize = atoi(filesizebuf);
+        strcat(destpath, "/");
+        strcat(destpath, filename);
+
+        int fd = open(destpath, O_CREAT | O_RDWR | O_APPEND, 0777);
+        if(fd < -1) {
+            printf("\nError opening file\n");
+            return 1;
+        }
+        int totalbytesread = 0;
+        char filebuf[100];
+
+        char* message="received";
+        send(client, message, strlen(message), 0);
+
+        while(totalbytesread < filesize) {
+            // int bytesread = read(client, filebuf, 100);
+            int bytesread = recv(client, filebuf, 100, 0);
+            totalbytesread += bytesread;
+            int writebytes = write(fd, filebuf, bytesread);
+            if(writebytes < 0) {
+                printf("\nError writing file\n");
+                return 1;
+            }
+        }
+
+        printf("\nDone\n");
+        
     }
     return 0;
 }
