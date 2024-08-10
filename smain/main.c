@@ -10,7 +10,7 @@
 #include <sys/stat.h>
 
 
-int connecttoserver(char* filename, char* servername) {
+int connecttoserver(char* command, char* servername) {
     int server;
     char* port = strcmp(servername, "pdf") == 0? "9533": "9534";
     char* ipaddr = "127.0.0.1";
@@ -19,7 +19,7 @@ int connecttoserver(char* filename, char* servername) {
 
     if ((server = socket(AF_INET, SOCK_STREAM, 0)) < 0) { //socket()
         fprintf(stderr, "Cannot create socket\n");
-        exit(1);
+        return -1;
     }
 
     sscanf(port, "%d", &portNumber);
@@ -29,20 +29,226 @@ int connecttoserver(char* filename, char* servername) {
 
     if (inet_pton(AF_INET, ipaddr, &servAdd.sin_addr) < 0) {
         fprintf(stderr, " inet_pton() has failed\n");
-        exit(2);
+        return -1;
     }
 
     if (connect(server, (struct sockaddr* ) &servAdd, sizeof(servAdd)) < 0) { //Connect()
         fprintf(stderr, "connect() failed, exiting\n");
         perror("connect failed");
-        exit(3);
+        return -1;
+    }
+    
+
+    write(server, command, strlen(command));
+
+    return server;
+}
+
+int uploadtoserver(int client, int server) {
+    int filesize;
+    char filesizebuf[100];
+    // get size of file
+    int recbytes = read(client, filesizebuf, 100);
+    if (recbytes < 0) {
+        printf("\nError receiving filesize\n");
+        return 1;
     }
 
-    char*  datatoserver = "This is test data sent to server";
+    filesize = atoi(filesizebuf);
 
-    write(server, datatoserver, strlen(datatoserver));
+    int n;
 
-    exit(0);
+    // n= write(socket, leninstr, strlen(leninstr));
+    n = send(server, filesizebuf, strlen(filesizebuf), 0);
+
+    if (n < 0) {
+        printf("\nSend filesize to text server failed\n");
+        return 1;
+    }
+
+    char confirmation[8];
+    int recvconfirm = recv(server, confirmation, 8, 0);
+    if (recvconfirm < 0) {
+        printf("\nError uploading file\n");
+        return 1;
+    }
+
+    char* message = "received";
+    send(client, message, strlen(message), 0);
+
+    printf("\nTransferring to text\n");
+
+    int totalbytesread = 0;
+    char filebuf[100];
+    while (totalbytesread < filesize) {
+        // int bytesread = read(client, filebuf, 100);
+        int bytesread = recv(client, filebuf, 100, 0);
+        totalbytesread += bytesread;
+        int n = send(server, filebuf, bytesread, 0);
+        if (n < 0) {
+            printf("\nWrite Failed\n");
+        }
+    }
+
+    return 0;
+}
+
+int uploadtomain(int client, char* destpath, int pathprovided, char* filename) {
+    struct stat st;
+    // Check if the directory exists
+    if (pathprovided && (stat(destpath, &st) != 0 || !S_ISDIR(st.st_mode))) {
+        // Directory does not exist, attempt to create it
+        char newpath[100] = "";
+        int count = 0;
+        char temppath[100];
+        strcpy(temppath, destpath);
+        for (char* separator = strtok(temppath, "/"); separator != NULL; separator = strtok(NULL, "/"), count += 1) {
+            if (count != 0)
+                strcat(newpath, "/");
+            strcat(newpath, separator);
+            if (stat(newpath, &st) != 0 || !S_ISDIR(st.st_mode)) {
+                if (mkdir(newpath, 0700) != 0) {
+                    perror("mkdir failed");
+                    return -1; // Failed to create directory
+                }
+            }
+        }
+    }
+
+    int filesize;
+    char filesizebuf[100];
+    // get size of file
+    int recbytes = read(client, filesizebuf, 100);
+    if (recbytes < 0) {
+        printf("\nError receiving filesize\n");
+        return 1;
+    }
+
+    filesize = atoi(filesizebuf);
+    if (pathprovided) {
+        strcat(destpath, "/");
+        strcat(destpath, filename);
+    } else
+        strcpy(destpath, filename);
+
+    int fd = open(destpath, O_CREAT | O_RDWR | O_APPEND, 0777);
+    if (fd < -1) {
+        printf("\nError opening file\n");
+        return 1;
+    }
+    int totalbytesread = 0;
+    char filebuf[100];
+
+    char* message = "received";
+    send(client, message, strlen(message), 0);
+
+    while (totalbytesread < filesize) {
+        // int bytesread = read(client, filebuf, 100);
+        int bytesread = recv(client, filebuf, 100, 0);
+        totalbytesread += bytesread;
+        int writebytes = write(fd, filebuf, bytesread);
+        if (writebytes < 0) {
+            printf("\nError writing file\n");
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
+int ufilecommand(char* cmd, char* filename, char* dest, int client) {
+    char* mainfolder = "~smain";
+    char* textfolder = "~stext";
+    char* pdffolder = "~spdf";
+    char servername[5];
+    char destpath[100];
+    if (strncmp(dest, mainfolder, strlen(mainfolder)) == 0) {
+        int pathprovided = 1;
+        if (strcmp(dest, mainfolder) == 0) {
+            pathprovided = 0;
+            strcpy(destpath, "");
+        } else
+            strcpy(destpath, dest + strlen(mainfolder) + 1);
+
+        struct stat st;
+
+        int server;
+        char ext[5];
+        char* dot = strrchr(filename, '.');
+        if (!dot || dot == filename) {
+            strcpy(ext, "");
+        } else strcpy(ext, dot + 1);
+
+        if (strcmp(ext, "txt") == 0) {
+            strcpy(servername, "text");
+
+            char command[100];
+
+            strcpy(command, cmd);
+            strcat(command, " ");
+            strcat(command, filename);
+            strcat(command, " ");
+            if (pathprovided)
+                strcat(command, destpath);
+            else
+                strcat(command, "/");
+
+
+            printf("\nText Command %s\n", command);
+
+            server = connecttoserver(command, servername);
+
+            if(server < 0) {
+                printf("\nError establishing connection to text server\n");
+                return 1;
+            }
+
+            int serverstatus = uploadtoserver(client, server);
+
+            close(server);
+            printf("\nDone\n");
+            return serverstatus;
+        } else if (strcmp(ext, "pdf") == 0) {
+            strcpy(servername, "pdf");
+             char command[100];
+
+            strcpy(command, cmd);
+            strcat(command, " ");
+            strcat(command, filename);
+            strcat(command, " ");
+            if (pathprovided)
+                strcat(command, destpath);
+            else
+                strcat(command, "/");
+
+
+            printf("\nPDF Command %s\n", command);
+
+            server = connecttoserver(command, servername);
+
+            if(server < 0) {
+                printf("\nError establishing connection to text server\n");
+                return 1;
+            }
+
+            int serverstatus = uploadtoserver(client, server);
+
+            close(server);
+            printf("\nDone\n");
+            return serverstatus;
+        } else if (strcpy(servername, "c")) {
+            strcpy(servername, "main");
+        } else {
+            printf("\nInvalid file type\n");
+            return 1;
+        }
+
+        if (strcmp(servername, "main") == 0) {
+            int uploadstatus = uploadtomain(client, destpath, pathprovided, filename);
+            printf("\nDone\n");
+            return uploadstatus;
+        }
+    }
 }
 
 int handlecommand(char* userinput, int client) {
@@ -59,69 +265,7 @@ int handlecommand(char* userinput, int client) {
     // ufile command
     if (strcmp(cmd, "ufile") == 0) {
 
-        if(strncmp(dest, mainfolder, strlen(mainfolder)) == 0) {
-            strcpy(destpath, dest + strlen(mainfolder) + 1);
-
-            struct stat st;
-            // Check if the directory exists
-            if (stat(destpath, &st) != 0 || !S_ISDIR(st.st_mode)) {
-                // Directory does not exist, attempt to create it
-
-                char newpath[100] = "";
-                int count = 0;
-                char temppath[100];
-                strcpy(temppath, destpath);
-                for (char* separator = strtok(temppath, "/"); separator != NULL; separator = strtok(NULL, "/"), count+=1) {
-                    if(count!=0)
-                    strcat(newpath, "/");
-                    strcat(newpath, separator);
-                    if(stat(newpath, &st) != 0 || !S_ISDIR(st.st_mode)) {
-                        if (mkdir(newpath, 0700) != 0) {
-                            perror("mkdir failed");
-                            return -1; // Failed to create directory
-                        }
-                    }
-
-                }
-            }
-        }
-
-        int filesize;
-        char filesizebuf[100];
-        // get size of file
-        int recbytes = read(client, filesizebuf, 100);
-        if (recbytes < 0) {
-            printf("\nError receiving filesize\n");
-            return 1;
-        }
-
-        filesize = atoi(filesizebuf);
-        strcat(destpath, "/");
-        strcat(destpath, filename);
-
-        int fd = open(destpath, O_CREAT | O_RDWR | O_APPEND, 0777);
-        if(fd < -1) {
-            printf("\nError opening file\n");
-            return 1;
-        }
-        int totalbytesread = 0;
-        char filebuf[100];
-
-        char* message="received";
-        send(client, message, strlen(message), 0);
-
-        while(totalbytesread < filesize) {
-            // int bytesread = read(client, filebuf, 100);
-            int bytesread = recv(client, filebuf, 100, 0);
-            totalbytesread += bytesread;
-            int writebytes = write(fd, filebuf, bytesread);
-            if(writebytes < 0) {
-                printf("\nError writing file\n");
-                return 1;
-            }
-        }
-
-        printf("\nDone\n");
+        return ufilecommand(cmd, filename, dest, client);
         
     }
     return 0;
@@ -173,7 +317,16 @@ while(1) {
         exit(3);
     }
 
-    handlecommand(buff1, client);
+    int success = handlecommand(buff1, client);
+
+    if(success == 0) {
+        char* message = "Successful";
+        send(client, message, strlen(message), 0);
+    }
+    else {
+        char* message = "Failed";
+        send(client, message, strlen(message), 0);
+    }
 
 
     // to test pdf server connection
