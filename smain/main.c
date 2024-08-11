@@ -44,6 +44,34 @@ int connecttoserver(char* command, char* servername) {
     return server;
 }
 
+int getfilesfromserver(char* command, char* servername, int client) {
+    int server = connecttoserver(command, servername);
+    if (server < 0) {
+        printf("\nError establishing connection to text server\n");
+        return -1;
+    }
+
+    char filename[100];
+    int sizereceived;
+    while(((sizereceived = recv(server, filename, 100, 0))) > 0) {
+        filename[sizereceived] = '\0';
+        if(strcmp(filename, "complete") == 0) {
+            break;
+        } 
+        else {
+            int n = send(client, filename, strlen(filename), 0);
+            if(n < 0) {
+                printf("Display to client failed\n");
+                return -1;
+            }
+        }
+    }
+
+    close(server);
+    return 0;
+}
+
+
 int listfiles(char* userpath, int client) {
 
     char path[100];
@@ -52,7 +80,7 @@ int listfiles(char* userpath, int client) {
     if (strcmp(userpath, mainfolder) == 0)
     {
         pathprovided=0;
-        strcpy(path, "");
+        strcpy(path, "./");
     }
     else
         strcpy(path, userpath + strlen(mainfolder) + 1);
@@ -91,36 +119,20 @@ int listfiles(char* userpath, int client) {
         closedir(directory);
     }
 
-    if(!pathprovided) {
-        strcpy(path, "/");
-    }
-
     char command[100];
 
     strcpy(command, "display");
     strcat(command, " ");
     strcat(command, path);
+    command[strlen(command)] = '\0';
 
-    int server = connecttoserver(command, "text");
-    if (server < 0) {
-        printf("\nError establishing connection to text server\n");
-        return 1;
+    int serverstatus = getfilesfromserver(command, "pdf", client);
+    if(serverstatus < 0) {
+        printf("\nError getting files from Text Server\n");
     }
-
-    char filename[100];
-    int sizereceived;
-    while(((sizereceived = recv(server, filename, 100, 0))) > 0) {
-        filename[sizereceived] = '\0';
-        if(strcmp(filename, "complete") == 0) {
-            break;
-        } 
-        else {
-            int n = send(client, filename, strlen(filename), 0);
-            if(n < 0) {
-                printf("Display to client failed\n");
-                return 1;
-            }
-        }
+    serverstatus = getfilesfromserver(command, "text", client);
+    if(serverstatus < 0) {
+        printf("\nError getting files from Text Server\n");
     }
 
 

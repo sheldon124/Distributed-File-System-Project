@@ -12,12 +12,7 @@
 
 int listfiles(char* userpath, int client) {
     char path[100];
-    if (strcmp(userpath, "/") == 0)
-    {
-        strcpy(path, "");
-    }
-    else
-        strcpy(path, userpath);
+    strcpy(path, userpath);
     struct stat st;
     if(stat(path, &st) != 0 || !S_ISDIR(st.st_mode)) {
         printf("\nDirectory path does not exist in smain");
