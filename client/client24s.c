@@ -1,6 +1,6 @@
+
 #include <stdio.h>
 #include <stdlib.h>
-#include <fcntl.h>
 #include <unistd.h>
 #include <errno.h>
 #include <string.h>
@@ -11,10 +11,13 @@
 #include <arpa/inet.h>
 #include <regex.h>
 #include <stdbool.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
 #define PORT 3400
 #define MAXSIZE 1024
 
+//Shane Change
 bool checkIPFormat(const char *ip) {
     regex_t regex;
     const char *pattern = "^([0-9]{1,3}\\.){3}[0-9]{1,3}$";
@@ -28,6 +31,7 @@ bool checkIPFormat(const char *ip) {
     }
 }
 
+//Shane Change
 void trimAndRemoveNewLine(char *input){
     if(input[0] != '\0' && input != NULL){ //Check if first character is not empty, n has characters
 
@@ -61,8 +65,9 @@ void trimAndRemoveNewLine(char *input){
         }
         input[j] = '\0'; //Null terminator mst be added to strings
     }
-} 
+}  
 
+//Shane Change
 void parseInput(char *input, char **commandArgv, int *commandArgc) {
     int index = 0;
     char *currentCmd;
@@ -79,6 +84,7 @@ void parseInput(char *input, char **commandArgv, int *commandArgc) {
     *commandArgc = index; //Assigning the value of index as count ref
 }
 
+//Shane Change
 bool checkFileExtension(const char *file){
     if(file == NULL){
         return false;
@@ -109,6 +115,7 @@ bool checkFileExtension(const char *file){
     }
 }
 
+//Shane Change
 bool checkTildePath(const char *path){
     if(path == NULL){
         return false;
@@ -135,6 +142,7 @@ bool checkTildePath(const char *path){
     return true;
 }
 
+//Shane Change
 bool checkInput(char **commandArgv, int commandArgc){
     if(commandArgc < 1){
         return false;
@@ -192,6 +200,11 @@ bool checkInput(char **commandArgv, int commandArgc){
         }
     }
     else if(strcmp(commandArgv[0], "dtar") == 0){
+        //printf("ARG COUNT RECEIVED: %d\n", commandArgc);
+        if(commandArgc > 2){
+            printf("Only 2 arguments are allowed.\n");
+            return false;
+        }
         if (strcmp(commandArgv[1], ".c") != 0 && strcmp(commandArgv[1], ".pdf") != 0 && strcmp(commandArgv[1], ".c") != 0) {
             printf("Invalid extension '%s'. Please enter '.txt', '.pdf', or '.c'.\n", commandArgv[1]);
             return false;
@@ -222,6 +235,171 @@ int displayfiles(int socket) {
 
     if(!filespresent) 
     printf("\nNo Files present for the directory\n");
+}
+
+//Shane Change
+const char* extractFileName(const char* path){
+    const char *fileName = NULL;
+    for(int i = strlen(path); i>=0; i--){
+        if(path[i] == '/'){ //abc.pdf => .pdf
+            //Store in the pathExt variable
+            fileName = &path[i];
+
+            break; // Exit the loop
+        }
+    }
+
+    return fileName;
+}
+
+//Shane Change
+char* createDownloadsPath(const char *filePath) {
+
+    // Create the downloads directory, if not there
+    if (mkdir("/home/correas/Project/Distributed-File-System-Project/client/downloads/", 0777) == -1) { 
+        // Check if the error occurred due to the directory already existing
+        if (errno != EEXIST) {
+            perror("Error creating downloads directory");
+            return NULL;
+        }
+    }
+
+    const char *fileName = extractFileName(filePath);
+
+    static char fullDownloadPath[1024];// Buffer
+    strcpy(fullDownloadPath, "/home/correas/Project/Distributed-File-System-Project/client/downloads/");
+    strcat(fullDownloadPath, fileName);
+
+    return fullDownloadPath;
+}
+
+//Shane Change
+void downloadingFile(int server, const char *filePath){
+
+    //Create the downloads directory, if not there
+    char *fullDownloadPath = createDownloadsPath(filePath);
+    if (fullDownloadPath == NULL) {
+        printf("Download path could not be created.\n");
+        return;
+    }
+    
+    char buffer[1024];
+    ssize_t bytes_received;
+
+    umask(0000);
+    int file_fd = open(fullDownloadPath, O_WRONLY | O_CREAT | O_TRUNC, 0777);
+    if (file_fd < 0) {
+        perror("Error opening file for writing");
+        return;
+    }
+
+    //
+    while ((bytes_received = recv(server, buffer, sizeof(buffer), 0)) > 0) {
+        if (write(file_fd, buffer, bytes_received) < 0) {
+            perror("Error writing to file");
+            close(file_fd);
+            return;
+        }
+    }
+
+    if (bytes_received < 0) {
+        perror("Error receiving file");
+    } else {
+        printf("File received successfully.\n");
+    }
+
+    close(file_fd);
+
+}
+
+//Shane Change
+char* createTarPath(const char *tarPath) {
+
+    // Create the downloads directory, if not there
+    if (mkdir("/home/correas/Project/Distributed-File-System-Project/client/tarFiles/", 0777) == -1) { 
+        // Check if the error occurred due to the directory already existing
+        if (errno != EEXIST) {
+            perror("Error creating tarFiles directory");
+            return NULL;
+        }
+    }
+
+    const char *fileName = extractFileName(tarPath);
+
+    static char fullDownloadPath[1024];// Buffer
+    strcpy(fullDownloadPath, "/home/correas/Project/Distributed-File-System-Project/client/tarFiles/");
+    strcat(fullDownloadPath, fileName);
+
+    return fullDownloadPath;
+}
+
+//Shane Change
+void downloadingTarFile(int server){
+    char buffer[1024];
+    ssize_t bytes_received;
+
+    char tarball_name[1024];
+    bytes_received = recv(server, tarball_name, sizeof(tarball_name), 0);
+    if (bytes_received <= 0) {
+        perror("Failed to receive tarball filename");
+        return;
+    }
+    printf("Receiving file: %s\n", tarball_name);
+
+    char *fullDownloadTarPath = createTarPath(tarball_name);
+    if (fullDownloadTarPath == NULL) {
+        printf("Download path could not be created.\n");
+        return;
+    }
+
+    umask(0000);
+    int file_fd = open(fullDownloadTarPath, O_WRONLY | O_CREAT | O_TRUNC, 0777);
+    if (file_fd < 0) {
+        perror("Error opening file for writing");
+        return;
+    }
+
+    while ((bytes_received = recv(server, buffer, sizeof(buffer), 0)) > 0) {
+        if (write(file_fd, buffer, bytes_received) < 0) {
+            perror("Error writing to file");
+            close(file_fd);
+            return;
+        }
+    }
+
+    if (bytes_received < 0) {
+        perror("Error receiving file");
+    } else {
+        printf("Tar File received successfully: %s\n", fullDownloadTarPath);
+    }
+
+    close(file_fd);
+
+}
+
+//Shane Change
+void handleServerResponse(int server, char **commandArgv) {
+    char header[1024];
+    ssize_t bytes_received;
+
+    bytes_received = recv(server, header, 1024 - 1, 0);
+    if (bytes_received < 0) {
+        perror("Error receiving header");
+        return;
+    }
+
+    header[bytes_received] = '\0';
+
+    if (strcmp(header, "dfile") == 0) {
+        printf("File transfer initiated by server.\n");
+        downloadingFile(server, commandArgv[1]);
+    } else if (strcmp(header, "dtar") == 0 || strncmp(header, "dtar", 4) == 0) {
+        printf("Dtar transfer initiated by server.\n");
+        downloadingTarFile(server);
+    }
+    else {
+        printf("Normal Message from Server: %s\n", header);
+    }
 }
 
 int uploadfile(int socket, char* filename) {
@@ -372,15 +550,19 @@ int main(int argc, char *argv[]){
         else if(strcmp(commandArgv[0], "display") == 0) {
             displayfiles(server);
         }
-
-        //Read from pipe and display
-        int bytes_read = read(server, message, MAXSIZE - 1);
-        if (bytes_read < 0) {
-            printf("Client: read() failure\n");
-            exit(3);
+        else if (strcmp(commandArgv[0], "dfile") == 0 || strcmp(commandArgv[0], "dtar") == 0) {
+            handleServerResponse(server, commandArgv);
         }
-        message[bytes_read] = '\0';
-        printf("Server: %s\n", message);
+
+        //Shane Change
+        //Read from pipe and display
+        // int bytes_read = read(server, message, MAXSIZE - 1);
+        // if (bytes_read < 0) {
+        //     printf("Client: read() failure\n");
+        //     exit(3);
+        // }
+        // message[bytes_read] = '\0';
+        // printf("Server: %s\n", message);
 
         
     } //Infinite loop end
