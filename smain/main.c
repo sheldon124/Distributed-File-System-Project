@@ -8,7 +8,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/stat.h>
-
+#include <dirent.h>
 
 int connecttoserver(char* command, char* servername) {
     int server;
@@ -42,6 +42,100 @@ int connecttoserver(char* command, char* servername) {
     write(server, command, strlen(command));
 
     return server;
+}
+
+int listfiles(char* userpath, int client) {
+
+    char path[100];
+    char *mainfolder = "~smain";
+    int pathprovided = 1;
+    if (strcmp(userpath, mainfolder) == 0)
+    {
+        pathprovided=0;
+        strcpy(path, "");
+    }
+    else
+        strcpy(path, userpath + strlen(mainfolder) + 1);
+    struct stat st;
+    if(stat(path, &st) != 0 || !S_ISDIR(st.st_mode)) {
+        printf("\nDirectory path does not exist in smain");
+    }
+    else {
+        DIR* directory;
+        if (!(directory = opendir(path))) {
+            perror("Error opening directory");
+            return 1;
+        }
+        for(struct dirent *direntry = readdir(directory); direntry != NULL; direntry = readdir(directory)) {
+
+            if (strcmp(direntry->d_name, ".") == 0 || strcmp(direntry->d_name, "..") == 0) {
+            continue;
+        }
+
+            char new_path[1024];
+            snprintf(new_path, sizeof(new_path), "%s/%s", path, direntry->d_name);
+
+        if (direntry->d_type == DT_REG) {
+            printf("File: %s\n", direntry->d_name);
+            int n = send(client, direntry->d_name, strlen(direntry->d_name), 0);
+            if(n < 0) {
+                printf("Display to client failed\n");
+                return 1;
+            }
+            sleep(0.5);
+        }
+        // else if (direntry->d_type == DT_DIR) {
+        //     listfiles(new_path);
+        // }
+        }
+        closedir(directory);
+    }
+
+    if(!pathprovided) {
+        strcpy(path, "/");
+    }
+
+    char command[100];
+
+    strcpy(command, "display");
+    strcat(command, " ");
+    strcat(command, path);
+
+    int server = connecttoserver(command, "text");
+    if (server < 0) {
+        printf("\nError establishing connection to text server\n");
+        return 1;
+    }
+
+    char filename[100];
+    int sizereceived;
+    while(((sizereceived = recv(server, filename, 100, 0))) > 0) {
+        filename[sizereceived] = '\0';
+        if(strcmp(filename, "complete") == 0) {
+            break;
+        } 
+        else {
+            int n = send(client, filename, strlen(filename), 0);
+            if(n < 0) {
+                printf("Display to client failed\n");
+                return 1;
+            }
+        }
+    }
+
+
+    char complete[50] = "complete";
+    complete[strlen(complete)] = '\0';
+    int n = send(client, complete, strlen(complete), 0);
+    if (n < 0)
+    {
+        printf("Display to client failed\n");
+        return 1;
+    }
+    sleep(0.5);
+
+    return 0;
+
 }
 
 int uploadtoserver(int client, int server) {
@@ -158,8 +252,6 @@ int uploadtomain(int client, char* destpath, int pathprovided, char* filename) {
 
 int ufilecommand(char* cmd, char* filename, char* dest, int client) {
     char* mainfolder = "~smain";
-    char* textfolder = "~stext";
-    char* pdffolder = "~spdf";
     char servername[5];
     char destpath[100];
     if (strncmp(dest, mainfolder, strlen(mainfolder)) == 0) {
@@ -256,22 +348,22 @@ int handlecommand(char* userinput, int client) {
     char filename[100];
     char dest[100];
     char* mainfolder = "~smain";
-    char* textfolder = "~stext";
-    char* pdffolder = "~spdf";
     char destpath[100];
     sscanf(userinput, "%s %s %s", cmd, filename, dest);
     printf("%s, %s, %s\n", cmd, filename, dest);
 
     // ufile command
     if (strcmp(cmd, "ufile") == 0) {
-
         return ufilecommand(cmd, filename, dest, client);
-        
+    }
+    else if(strcmp(cmd, "display") == 0) {
+        return listfiles(filename, client);
     }
     return 0;
 }
   
-int main(int argc, char *argv[]){//E.g., 1, server
+int main(int argc, char *argv[]){
+
 char *myTime;
 time_t currentUnixTime; // time.h
 int sd, client, portNumber;
@@ -300,7 +392,6 @@ if (listen(sd, 5) < 0) {
     perror("listen failed");
     exit(1);
 }
-
 while(1) {
     
     client=accept(sd,(struct sockaddr*)NULL,NULL);//accept()

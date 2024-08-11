@@ -8,7 +8,62 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/stat.h>
+#include <dirent.h>
 
+int listfiles(char* userpath, int client) {
+    char path[100];
+    if (strcmp(userpath, "/") == 0)
+    {
+        strcpy(path, "");
+    }
+    else
+        strcpy(path, userpath);
+    struct stat st;
+    if(stat(path, &st) != 0 || !S_ISDIR(st.st_mode)) {
+        printf("\nDirectory path does not exist in smain");
+    }
+    else {
+        DIR* directory;
+        if (!(directory = opendir(path))) {
+            perror("Error opening directory");
+            return 1;
+        }
+        for(struct dirent *direntry = readdir(directory); direntry != NULL; direntry = readdir(directory)) {
+
+            if (strcmp(direntry->d_name, ".") == 0 || strcmp(direntry->d_name, "..") == 0) {
+            continue;
+        }
+
+            char new_path[1024];
+            snprintf(new_path, sizeof(new_path), "%s/%s", path, direntry->d_name);
+
+        if (direntry->d_type == DT_REG) {
+            printf("File: %s\n", direntry->d_name);
+            int n = send(client, direntry->d_name, strlen(direntry->d_name), 0);
+            if(n < 0) {
+                printf("Display to client failed\n");
+                return 1;
+            }
+            sleep(0.5);
+        }
+        // else if (direntry->d_type == DT_DIR) {
+        //     listfiles(new_path);
+        // }
+        }
+        closedir(directory);
+    }
+    char complete[50] = "complete";
+    // complete[strlen(complete)] = '\0';
+    int n = send(client, complete, strlen(complete), 0);
+    if (n < 0)
+    {
+        printf("Display to client failed\n");
+        return 1;
+    }
+    sleep(0.5);
+
+    return 0;
+}
 
 int ufilecommand(char *cmd, char *filename, char *dest, int client) {
     int pathprovided = 1;
@@ -99,6 +154,9 @@ int prcclient(char* inputcommand, int client) {
     sscanf(inputcommand, "%s %s %s", cmd, filename, dest);
     if(strcmp(cmd, "ufile") == 0) {
         return ufilecommand(cmd, filename, dest, client);
+    }
+    else if(strcmp(cmd, "display") == 0) {
+        return listfiles(filename, client);
     }
     return 0;
 }

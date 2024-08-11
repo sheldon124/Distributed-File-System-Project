@@ -204,6 +204,19 @@ bool checkInput(char **commandArgv, int commandArgc){
     return true;
 }
 
+int displayfiles(int socket) {
+    char filename[100];
+    printf("\nList of files\n");
+    int sizereceived;
+    while(((sizereceived = recv(socket, filename, 100, 0))) > 0) {
+        filename[sizereceived] = '\0';
+        if(strcmp(filename, "complete") == 0) {
+            break;
+        } 
+        else printf("%s\n", filename);
+    }
+}
+
 int uploadfile(int socket, char* filename) {
     int fd = open(filename, O_RDWR);
     if(fd < 0) {
@@ -348,6 +361,9 @@ int main(int argc, char *argv[]){
 
         if(strcmp(commandArgv[0], "ufile") == 0) {
             uploadfile(server, commandArgv[1]);
+        }
+        else if(strcmp(commandArgv[0], "display") == 0) {
+            displayfiles(server);
         }
 
         //Read from pipe and display
