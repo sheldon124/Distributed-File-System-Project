@@ -207,14 +207,21 @@ bool checkInput(char **commandArgv, int commandArgc){
 int displayfiles(int socket) {
     char filename[100];
     printf("\nList of files\n");
+    int filespresent = 0;
     int sizereceived;
     while(((sizereceived = recv(socket, filename, 100, 0))) > 0) {
         filename[sizereceived] = '\0';
         if(strcmp(filename, "complete") == 0) {
             break;
         } 
-        else printf("%s\n", filename);
+        else {
+            printf("%s\n", filename);
+            filespresent = 1;
+        }
     }
+
+    if(!filespresent) 
+    printf("\nNo Files present for the directory\n");
 }
 
 int uploadfile(int socket, char* filename) {

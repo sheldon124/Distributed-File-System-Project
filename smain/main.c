@@ -47,7 +47,7 @@ int connecttoserver(char* command, char* servername) {
 int getfilesfromserver(char* command, char* servername, int client) {
     int server = connecttoserver(command, servername);
     if (server < 0) {
-        printf("\nError establishing connection to text server\n");
+        printf("\nError establishing connection to %s server\n", servername);
         return -1;
     }
 
