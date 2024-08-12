@@ -9,6 +9,21 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <dirent.h>
+#include <stdio.h>
+#include <stdbool.h>
+#include <sys/stat.h>
+
+
+bool checkIfFileExists(const char *filepath){
+    struct stat fileInfo;
+    int fd = open(filepath, O_RDONLY);
+    if (fd < 0) {
+        return false;
+    }
+
+    close(fd);
+    return true;
+}
 
 int listfiles(char* userpath, int client) {
     char path[100];
@@ -149,6 +164,15 @@ int ufilecommand(char *cmd, char *filename, char *dest, int client) {
     return 0;
 }
 
+int removefile(char* filepath) {
+    if(checkIfFileExists(filepath)) {
+        remove(filepath);
+        return 0;
+    }
+    printf("\nFile does not exist\n");
+    return -1;
+}
+
 int prcclient(char* inputcommand, int client) {
     char cmd[100];
     char filename[100];
@@ -159,6 +183,16 @@ int prcclient(char* inputcommand, int client) {
     }
     else if(strcmp(cmd, "display") == 0) {
         return listfiles(filename, client);
+    }
+    else if(strcmp(cmd, "rmfile") == 0) {
+        if(removefile(filename) < 0) {
+            char* status = "0";
+            send(client, status, 1, 0);
+        }
+        else {
+            char* status = "1";
+            send(client, status, 1, 0);
+        }
     }
     return 0;
 }
