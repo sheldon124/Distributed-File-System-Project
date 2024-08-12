@@ -255,19 +255,25 @@ const char* extractFileName(const char* path){
 //Shane Change
 char* createDownloadsPath(const char *filePath) {
 
-    // Create the downloads directory, if not there
-    if (mkdir("/home/dsouza56/project/client/downloads/", 0777) == -1) { 
-        // Check if the error occurred due to the directory already existing
-        if (errno != EEXIST) {
-            perror("Error creating downloads directory");
-            return NULL;
-        }
+    char cwd[1024];
+    if (getcwd(cwd, sizeof(cwd)) != NULL) {
+        printf("Current Working Directory %s\n", cwd);  
     }
+
+    // Create the downloads directory, if not there
+    // if (mkdir("/home/dsouza56/project/client/downloads/", 0777) == -1) { 
+    //     // Check if the error occurred due to the directory already existing
+    //     if (errno != EEXIST) {
+    //         perror("Error creating downloads directory");
+    //         return NULL;
+    //     }
+    // }
 
     const char *fileName = extractFileName(filePath);
 
     static char fullDownloadPath[1024];// Buffer
-    strcpy(fullDownloadPath, "/home/dsouza56/project/client/downloads/");
+    //strcpy(fullDownloadPath, "/home/dsouza56/project/client/downloads/");
+    strcpy(fullDownloadPath, cwd);
     strcat(fullDownloadPath, fileName);
 
     return fullDownloadPath;
@@ -346,7 +352,7 @@ void downloadingTarFile(int server){
     }
     printf("Receiving file: %s\n", tarball_name);
 
-    char *fullDownloadTarPath = createTarPath(tarball_name);
+    char *fullDownloadTarPath = createDownloadsPath(tarball_name);
     if (fullDownloadTarPath == NULL) {
         printf("Download path could not be created.\n");
         return;
@@ -393,7 +399,7 @@ void handleServerResponse(int server, char **commandArgv) {
     if (strcmp(header, "dfile") == 0) {
         printf("File transfer initiated by server.\n");
         downloadingFile(server, commandArgv[1]);
-    } else if (strcmp(header, "dtar") == 0) {
+    } else if (strcmp(header, "dtar") == 0  || strncmp(header, "dtar", 4) == 0 ) {
         printf("Dtar transfer initiated by server.\n");
         downloadingTarFile(server);
     }

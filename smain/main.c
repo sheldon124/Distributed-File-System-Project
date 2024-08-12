@@ -213,9 +213,13 @@ int containsCFiles(const char *filePath, const struct stat *FileInfo, int flag, 
 
 //Shane Change
 void tarCFiles(int client){
-    
+    char cwd[1024];
+    if (getcwd(cwd, sizeof(cwd)) != NULL) {
+        printf("Current Working Directory %s\n", cwd);  
+    }
+
     //Check if C Files exist on the smain server
-    const char *path = "/home/dsouza56/project/smain/";
+    const char *path = cwd;
     //const char *path = "~smain/";
     if(nftw(path, containsCFiles, 50, FTW_PHYS ) == -1){ //If error occurs
         printf("Error occurred while visiting the directory '%s'\n", path);
@@ -230,7 +234,7 @@ void tarCFiles(int client){
     }
 
     // Create a tarball name using the Unix timestamp
-    const char *tarball_dir = "/home/dsouza56/project/smain/tarballs/";
+    const char *tarball_dir = cwd;
     
     if (mkdir(tarball_dir, 0777) == -1) { 
         if (errno != EEXIST) {  // Ignore the error if the directory already exists
