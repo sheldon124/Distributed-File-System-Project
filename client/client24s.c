@@ -318,26 +318,6 @@ void downloadingFile(int server, const char *filePath){
 
 }
 
-//Shane Change
-char* createTarPath(const char *tarPath) {
-
-    // Create the downloads directory, if not there
-    if (mkdir("/home/dsouza56/project/client/tarFiles/", 0777) == -1) { 
-        // Check if the error occurred due to the directory already existing
-        if (errno != EEXIST) {
-            perror("Error creating tarFiles directory");
-            return NULL;
-        }
-    }
-
-    const char *fileName = extractFileName(tarPath);
-
-    static char fullDownloadPath[1024];// Buffer
-    strcpy(fullDownloadPath, "/home/dsouza56/project/client/tarFiles/");
-    strcat(fullDownloadPath, fileName);
-
-    return fullDownloadPath;
-}
 
 //Shane Change
 void downloadingTarFile(int server){
