@@ -194,7 +194,7 @@ int removeHandler(char **commandArgv, int commandArgc, int client){
         }else if (strcmp(pathExt, ".txt") == 0) {
             printf("Process for REMOVE .txt\n");
         } else if (strcmp(pathExt, ".pdf") == 0) {
-            printf("Process for REMOVE .txt\n");
+            printf("Process for REMOVE .pdf\n");
             char command[100];
 
             char path[100];
