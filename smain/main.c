@@ -20,6 +20,8 @@
 #include <time.h>
 #include <dirent.h>
 
+int connecttoserver(char* command, char* servername);
+
 //Shane Change
 const char *baseDir = "/home/dsouza56/project/";
 bool cFilesExist = false;
@@ -174,12 +176,14 @@ void removeCFiles(const char *fullPath, int client){
 }
 
 //Shane Change
-void removeHandler(char **commandArgv, int commandArgc, int client){
+int removeHandler(char **commandArgv, int commandArgc, int client){
     
     const char *fullPath = constructFullPath(baseDir, commandArgv[1]);
     //printf("FullPath: %s\n", fullPath);
 
     const char *pathExt = getFileExtension(fullPath);
+
+    char *mainfolder = "~smain";
     //printf("Path Ext: %s\n", pathExt);
 
     if(pathExt != NULL){
@@ -191,14 +195,44 @@ void removeHandler(char **commandArgv, int commandArgc, int client){
             printf("Process for REMOVE .txt\n");
         } else if (strcmp(pathExt, ".pdf") == 0) {
             printf("Process for REMOVE .pdf\n");
+            char command[100];
+
+            char path[100];
+            strcpy(path, commandArgv[1] + strlen(mainfolder) + 1);
+            strcpy(command, commandArgv[0]);
+            strcat(command, " ");
+            strcat(command, path);
+            strcat(command, " ");
+
+            int server = connecttoserver(command, "pdf");
+            if (server < 0) {
+                printf("\nError establishing connection to pdf server\n");
+                return -1;
+            }
+            char status[1];
+            int recvstatusbytes = recv(server, status, 1, 0);
+            if(recvstatusbytes < 0) {
+                printf("\nError deleting file\n");
+                close(server);
+                return -1;
+            }
+            printf("%s\n", status);
+            if(status[0] == '0') {
+                printf("\nFile does not exist\n");
+            }
+            else {
+                printf("\nFile removed succesfully from server\n");
+            }
+            close(server);
         }
     }else{
         printf("Invalid file extension provided.\n");
         char *msg = "Invalid file extension provided.";
         write(client, msg, strlen(msg) + 1); // Send Error message to client
-        return;
+        return -1;
     }
-    
+
+    return 0;
 }
 
 //Shane Change
@@ -681,10 +715,23 @@ int handlecommand(char* userinput, int client) {
 
     // ufile command
     if (strcmp(cmd, "ufile") == 0) {
-        return ufilecommand(cmd, filename, dest, client);
-    }
-    else if(strcmp(cmd, "display") == 0) {
-        return listfiles(filename, client);
+        int success = ufilecommand(cmd, filename, dest, client);
+        if (success == 0) {
+            char * message = "Upload Successful";
+            send(client, message, strlen(message), 0);
+        } else {
+            char * message = "Upload Failed";
+            send(client, message, strlen(message), 0);
+        }
+    } else if (strcmp(cmd, "display") == 0) {
+        int success = listfiles(filename, client);
+        // if (success == 0) {
+        //     char * message = "Successful";
+        //     send(client, message, strlen(message), 0);
+        // } else {
+        //     char * message = "Failed";
+        //     send(client, message, strlen(message), 0);
+        // }
     }
 
     //Shane Change //Commented
@@ -759,20 +806,7 @@ while(1) {
 
     int success = handlecommand(buff1, client);
 
-    if(success == 0) {
-        char* message = "Successful";
-        send(client, message, strlen(message), 0);
-    }
-    else {
-        char* message = "Failed";
-        send(client, message, strlen(message), 0);
-    }
 
-
-    // to test pdf server connection
-    // if (strcmp(buff1, "pdf") == 0) {
-    //     connecttoserver("test", "pdf");
-    // }
     close(client);
     printf("\n");
     exit(0);

@@ -542,6 +542,7 @@ int main(int argc, char *argv[]){
 
         if(strcmp(commandArgv[0], "ufile") == 0) {
             uploadfile(server, commandArgv[1]);
+            handleServerResponse(server, commandArgv);
         }
         else if(strcmp(commandArgv[0], "display") == 0) {
             displayfiles(server);
@@ -552,13 +553,13 @@ int main(int argc, char *argv[]){
 
         //Shane Change
         //Read from pipe and display
-        int bytes_read = read(server, message, MAXSIZE - 1);
-        if (bytes_read < 0) {
-            printf("Client: read() failure\n");
-            exit(3);
-        }
-        message[bytes_read] = '\0';
-        printf("Server: %s\n", message);
+        // int bytes_read = read(server, message, MAXSIZE - 1);
+        // if (bytes_read < 0) {
+        //     printf("Client: read() failure\n");
+        //     exit(3);
+        // }
+        // message[bytes_read] = '\0';
+        // printf("Server: %s\n", message);
 
         close(server);
     } //Infinite loop end
