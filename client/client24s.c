@@ -217,6 +217,26 @@ bool checkInput(char **commandArgv, int commandArgc){
     return true;
 }
 
+int displayfiles(int socket) {
+    char filename[100];
+    printf("\nList of files\n");
+    int filespresent = 0;
+    int sizereceived;
+    while(((sizereceived = recv(socket, filename, 100, 0))) > 0) {
+        filename[sizereceived] = '\0';
+        if(strcmp(filename, "complete") == 0) {
+            break;
+        } 
+        else {
+            printf("%s\n", filename);
+            filespresent = 1;
+        }
+    }
+
+    if(!filespresent) 
+    printf("\nNo Files present for the directory\n");
+}
+
 //Shane Change
 const char* extractFileName(const char* path){
     const char *fileName = NULL;
@@ -397,10 +417,16 @@ int uploadfile(int socket, char* filename) {
 
 
     int n;
+    char sendmessage[100];
 
-    // n= write(socket, leninstr, strlen(leninstr));
+    n= recv(socket, sendmessage, 8, 0);
+    if(n < 0) {
+        printf("\nRecv failed: Unable to send files to server\n");
+        close(fd);
+        return 1;
+    }
+
     n= send(socket, leninstr, strlen(leninstr), 0);
-    
     if(n < 0) {
         printf("\nSend filesize to server failed\n");
         close(fd);
@@ -527,17 +553,22 @@ int main(int argc, char *argv[]){
         if(strcmp(commandArgv[0], "ufile") == 0) {
             uploadfile(server, commandArgv[1]);
         }
+        else if(strcmp(commandArgv[0], "display") == 0) {
+            displayfiles(server);
+        }
+        else if(strcmp(commandArgv[0], "dtar") == 0 || strcmp(commandArgv[0], "dfile") == 0) {
+            handleServerResponse(server, commandArgv);
+        }
 
         //Shane Change
         //Read from pipe and display
-        // int bytes_read = read(server, message, MAXSIZE - 1);
-        // if (bytes_read < 0) {
-        //     printf("Client: read() failure\n");
-        //     exit(3);
-        // }
-        // message[bytes_read] = '\0';
-        // printf("Server: %s\n", message);
-        handleServerResponse(server, commandArgv);
+        int bytes_read = read(server, message, MAXSIZE - 1);
+        if (bytes_read < 0) {
+            printf("Client: read() failure\n");
+            exit(3);
+        }
+        message[bytes_read] = '\0';
+        printf("Server: %s\n", message);
 
         
     } //Infinite loop end

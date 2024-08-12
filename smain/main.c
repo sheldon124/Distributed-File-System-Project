@@ -18,6 +18,7 @@
 #include <netdb.h>
 #include <regex.h>
 #include <time.h>
+#include <dirent.h>
 
 //Shane Change
 const char *baseDir = "/home/dsouza56/project/";
@@ -334,9 +335,128 @@ int connecttoserver(char* command, char* servername) {
     return server;
 }
 
+int getfilesfromserver(char* command, char* servername, int client) {
+    int server = connecttoserver(command, servername);
+    if (server < 0) {
+        printf("\nError establishing connection to %s server\n", servername);
+        return -1;
+    }
+
+    char filename[100];
+    int sizereceived;
+    while(((sizereceived = recv(server, filename, 100, 0))) > 0) {
+        filename[sizereceived] = '\0';
+        if(strcmp(filename, "complete") == 0) {
+            break;
+        } 
+        else {
+            int n = send(client, filename, strlen(filename), 0);
+            if(n < 0) {
+                printf("Display to client failed\n");
+                return -1;
+            }
+        }
+    }
+
+    close(server);
+    return 0;
+}
+
+
+int listfiles(char* userpath, int client) {
+
+    char path[100];
+    char *mainfolder = "~smain";
+    int pathprovided = 1;
+    if (strcmp(userpath, mainfolder) == 0)
+    {
+        pathprovided=0;
+        strcpy(path, "./");
+    }
+    else
+        strcpy(path, userpath + strlen(mainfolder) + 1);
+    struct stat st;
+    if(stat(path, &st) != 0 || !S_ISDIR(st.st_mode)) {
+        printf("\nDirectory path does not exist in smain");
+    }
+    else {
+        DIR* directory;
+        if (!(directory = opendir(path))) {
+            perror("Error opening directory");
+            return 1;
+        }
+        for(struct dirent *direntry = readdir(directory); direntry != NULL; direntry = readdir(directory)) {
+
+            if (strcmp(direntry->d_name, ".") == 0 || strcmp(direntry->d_name, "..") == 0) {
+            continue;
+        }
+
+            char new_path[1024];
+            snprintf(new_path, sizeof(new_path), "%s/%s", path, direntry->d_name);
+
+        if (direntry->d_type == DT_REG) {
+            printf("File: %s\n", direntry->d_name);
+            int n = send(client, direntry->d_name, strlen(direntry->d_name), 0);
+            if(n < 0) {
+                printf("Display to client failed\n");
+                return 1;
+            }
+            sleep(0.5);
+        }
+        // else if (direntry->d_type == DT_DIR) {
+        //     listfiles(new_path);
+        // }
+        }
+        closedir(directory);
+    }
+
+    char command[100];
+
+    strcpy(command, "display");
+    strcat(command, " ");
+    strcat(command, path);
+    command[strlen(command)] = '\0';
+
+    int serverstatus = getfilesfromserver(command, "pdf", client);
+    if(serverstatus < 0) {
+        printf("\nError getting files from Text Server\n");
+    }
+    serverstatus = getfilesfromserver(command, "text", client);
+    if(serverstatus < 0) {
+        printf("\nError getting files from Text Server\n");
+    }
+
+
+    char complete[50] = "complete";
+    complete[strlen(complete)] = '\0';
+    int n = send(client, complete, strlen(complete), 0);
+    if (n < 0)
+    {
+        printf("Display to client failed\n");
+        return 1;
+    }
+    sleep(0.5);
+
+    return 0;
+
+}
+
 int uploadtoserver(int client, int server) {
     int filesize;
     char filesizebuf[100];
+    char sendbytesmessage[100];
+
+    if(recv(server, sendbytesmessage, 8, 0) < 0) {
+        printf("\nRecv failed: Unable to send files to server\n");
+        return 1;
+    }
+
+    char* sendmessage = "sendsize";
+    int sendmessagebytes = send(client, sendmessage, strlen(sendmessage), 0);
+    if (sendmessagebytes < 0) {
+        printf("\nError in send bytes message\n");
+        return 1;
+    }
     // get size of file
     int recbytes = read(client, filesizebuf, 100);
     if (recbytes < 0) {
@@ -348,7 +468,6 @@ int uploadtoserver(int client, int server) {
 
     int n;
 
-    // n= write(socket, leninstr, strlen(leninstr));
     n = send(server, filesizebuf, strlen(filesizebuf), 0);
 
     if (n < 0) {
@@ -407,6 +526,14 @@ int uploadtomain(int client, char* destpath, int pathprovided, char* filename) {
 
     int filesize;
     char filesizebuf[100];
+
+    char* sendmessage = "sendsize";
+    int sendmessagebytes = send(client, sendmessage, strlen(sendmessage), 0);
+    if (sendmessagebytes < 0) {
+        printf("\nError in send bytes message\n");
+        return 1;
+    }
+
     // get size of file
     int recbytes = read(client, filesizebuf, 100);
     if (recbytes < 0) {
@@ -448,8 +575,6 @@ int uploadtomain(int client, char* destpath, int pathprovided, char* filename) {
 
 int ufilecommand(char* cmd, char* filename, char* dest, int client) {
     char* mainfolder = "~smain";
-    char* textfolder = "~stext";
-    char* pdffolder = "~spdf";
     char servername[5];
     char destpath[100];
     if (strncmp(dest, mainfolder, strlen(mainfolder)) == 0) {
@@ -546,44 +671,44 @@ int handlecommand(char* userinput, int client) {
     char filename[100];
     char dest[100];
     char* mainfolder = "~smain";
-    char* textfolder = "~stext";
-    char* pdffolder = "~spdf";
     char destpath[100];
     sscanf(userinput, "%s %s %s", cmd, filename, dest);
     printf("%s, %s, %s\n", cmd, filename, dest);
 
     // ufile command
     if (strcmp(cmd, "ufile") == 0) {
-
         return ufilecommand(cmd, filename, dest, client);
-        
+    }
+    else if(strcmp(cmd, "display") == 0) {
+        return listfiles(filename, client);
     }
 
     //Shane Change //Commented
-    // int commandArgc  = 0;
-    // char *commandArgv[200]; 
-    // parseInput(userinput, commandArgv, &commandArgc);
-    // for (int i = 0; i < commandArgc; i++) {
-    //     printf("commandArgv[%d] = %s\n", i, commandArgv[i]);
-    // }
+    int commandArgc  = 0;
+    char *commandArgv[200]; 
+    parseInput(userinput, commandArgv, &commandArgc);
+    for (int i = 0; i < commandArgc; i++) {
+        printf("commandArgv[%d] = %s\n", i, commandArgv[i]);
+    }
 
-    // if(strcmp(commandArgv[0], "dfile") == 0){
-    //     printf("Processing for DFile\n");
-    //     downloadHandler(commandArgv, commandArgc, client);
-    // }
-    // else if(strcmp(commandArgv[0], "rmfile") == 0){
-    //     printf("Processing for Remove File\n");
-    //     removeHandler(commandArgv, commandArgc, client);
-    // }
-    // else if(strcmp(commandArgv[0], "dtar") == 0){
-    //     printf("Processing for Dtar\n");
-    //     tarHandler(commandArgv, commandArgc, client);
-    // }
+    if(strcmp(commandArgv[0], "dfile") == 0){
+        printf("Processing for DFile\n");
+        downloadHandler(commandArgv, commandArgc, client);
+    }
+    else if(strcmp(commandArgv[0], "rmfile") == 0){
+        printf("Processing for Remove File\n");
+        removeHandler(commandArgv, commandArgc, client);
+    }
+    else if(strcmp(commandArgv[0], "dtar") == 0){
+        printf("Processing for Dtar\n");
+        tarHandler(commandArgv, commandArgc, client);
+    }
 
     return 0;
 }
   
-int main(int argc, char *argv[]){//E.g., 1, server
+int main(int argc, char *argv[]){
+
 char *myTime;
 time_t currentUnixTime; // time.h
 int sd, client, portNumber;
@@ -612,7 +737,6 @@ if (listen(sd, 5) < 0) {
     perror("listen failed");
     exit(1);
 }
-
 while(1) {
     
     client=accept(sd,(struct sockaddr*)NULL,NULL);//accept()
