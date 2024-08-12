@@ -459,13 +459,6 @@ int uploadfile(int socket, char* filename) {
 
 int main(int argc, char *argv[]){
 
-    int server;
-    int portNumber;
-    char message[MAXSIZE];
-    struct sockaddr_in servAdd;
-    char userCommand[MAXSIZE];
-    int commandArgc  = 0;
-    char *commandArgv[200]; 
 
     //Check if User provided IP and PORT Number
     if(argc != 3){
@@ -481,27 +474,6 @@ int main(int argc, char *argv[]){
         exit(1);
     }
 
-    //Create Socket
-    if( (server = socket(AF_INET, SOCK_STREAM, 0)) < 0 ){
-        printf("Failed to create Socket.\n");
-        exit(2);
-    }
-
-    //Connecting IP and PORT Number on Server Object.
-    servAdd.sin_family = AF_INET; //Internet
-    sscanf(argv[2], "%d", &portNumber);
-    servAdd.sin_port = htons((uint16_t)portNumber);//Port number
-
-    if( inet_pton(AF_INET, argv[1], &servAdd.sin_addr) < 0 ){ //IP Address Connection
-        printf("inet_pton() failure.\n");
-        exit(3);
-    }
-
-    //Connect System Call
-    if(connect(server, (struct sockaddr *) &servAdd,sizeof(servAdd))<0){//Connect()
-        printf("connect() failure.\n");
-        exit(4);
-    }
 
     //Display available commands
     printf("Select any of the commands to run on the smain server: \n");
@@ -513,6 +485,16 @@ int main(int argc, char *argv[]){
     printf("Please note 'file names' and 'paths' must be a tilde expansion path\n");
 
     while(1){ //Infinite loop start
+
+    int server;
+    int portNumber;
+    char message[MAXSIZE];
+    struct sockaddr_in servAdd;
+    char userCommand[MAXSIZE];
+    int commandArgc  = 0;
+    char *commandArgv[200]; 
+
+
         bool validInput = false;
 
         while(!validInput){
@@ -543,6 +525,28 @@ int main(int argc, char *argv[]){
             }
         }
 
+        //Create Socket
+    if( (server = socket(AF_INET, SOCK_STREAM, 0)) < 0 ){
+        printf("Failed to create Socket.\n");
+        exit(2);
+    }
+
+    //Connecting IP and PORT Number on Server Object.
+    servAdd.sin_family = AF_INET; //Internet
+    sscanf(argv[2], "%d", &portNumber);
+    servAdd.sin_port = htons((uint16_t)portNumber);//Port number
+
+    if( inet_pton(AF_INET, argv[1], &servAdd.sin_addr) < 0 ){ //IP Address Connection
+        printf("inet_pton() failure.\n");
+        exit(3);
+    }
+
+    //Connect System Call
+    if(connect(server, (struct sockaddr *) &servAdd,sizeof(servAdd))<0){//Connect()
+        printf("connect() failure.\n");
+        exit(4);
+    }
+
         //write(server, userCommand, strlen(userCommand) + 1); // Include null terminator in write
         ssize_t bytes_written = write(server, buffer, strlen(buffer) + 1); // Include null terminator in write
         if (bytes_written < 0) {
@@ -570,7 +574,7 @@ int main(int argc, char *argv[]){
         message[bytes_read] = '\0';
         printf("Server: %s\n", message);
 
-        
+        close(server);
     } //Infinite loop end
 
     exit(0);
