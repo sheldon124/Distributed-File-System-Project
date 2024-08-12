@@ -153,6 +153,19 @@ int listfiles(char* userpath, int client) {
 int uploadtoserver(int client, int server) {
     int filesize;
     char filesizebuf[100];
+    char sendbytesmessage[100];
+
+    if(recv(server, sendbytesmessage, 8, 0) < 0) {
+        printf("\nRecv failed: Unable to send files to server\n");
+        return 1;
+    }
+
+    char* sendmessage = "sendsize";
+    int sendmessagebytes = send(client, sendmessage, strlen(sendmessage), 0);
+    if (sendmessagebytes < 0) {
+        printf("\nError in send bytes message\n");
+        return 1;
+    }
     // get size of file
     int recbytes = read(client, filesizebuf, 100);
     if (recbytes < 0) {
@@ -164,7 +177,6 @@ int uploadtoserver(int client, int server) {
 
     int n;
 
-    // n= write(socket, leninstr, strlen(leninstr));
     n = send(server, filesizebuf, strlen(filesizebuf), 0);
 
     if (n < 0) {
@@ -223,6 +235,14 @@ int uploadtomain(int client, char* destpath, int pathprovided, char* filename) {
 
     int filesize;
     char filesizebuf[100];
+
+    char* sendmessage = "sendsize";
+    int sendmessagebytes = send(client, sendmessage, strlen(sendmessage), 0);
+    if (sendmessagebytes < 0) {
+        printf("\nError in send bytes message\n");
+        return 1;
+    }
+
     // get size of file
     int recbytes = read(client, filesizebuf, 100);
     if (recbytes < 0) {

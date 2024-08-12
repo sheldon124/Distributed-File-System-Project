@@ -239,10 +239,16 @@ int uploadfile(int socket, char* filename) {
 
 
     int n;
+    char sendmessage[100];
 
-    // n= write(socket, leninstr, strlen(leninstr));
+    n= recv(socket, sendmessage, 8, 0);
+    if(n < 0) {
+        printf("\nRecv failed: Unable to send files to server\n");
+        close(fd);
+        return 1;
+    }
+
     n= send(socket, leninstr, strlen(leninstr), 0);
-    
     if(n < 0) {
         printf("\nSend filesize to server failed\n");
         close(fd);

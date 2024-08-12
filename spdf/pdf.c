@@ -93,6 +93,13 @@ int ufilecommand(char *cmd, char *filename, char *dest, int client) {
 
     int filesize;
     char filesizebuf[100];
+
+    char* sendmessage = "sendsize";
+    int sendmessagebytes = send(client, sendmessage, strlen(sendmessage), 0);
+    if (sendmessagebytes < 0) {
+        printf("\nError in send bytes message\n");
+        return 1;
+    }
     // get size of file
     int recbytes = read(client, filesizebuf, 100);
     if (recbytes < 0)
