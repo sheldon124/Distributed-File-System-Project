@@ -309,6 +309,8 @@ int removeHandler(char **commandArgv, int commandArgc, int client){
             printf("%s\n", status);
             if(status[0] == '0') {
                 printf("\nFile does not exist\n");
+                char *msg = "File does not exist on the server.";
+                write(client, msg, strlen(msg) + 1);
             }
             else {
                 printf("\nFile removed succesfully from server\n");
