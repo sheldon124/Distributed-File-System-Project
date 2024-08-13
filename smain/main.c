@@ -21,6 +21,7 @@
 #include <dirent.h>
 #define MAX_LEN 1024
 
+// Function declared to connect to the server
 int connecttoserver(char* command, char* servername);
 
 //Glbal Variabe to keep track if fles exists in the swrver directiry
@@ -274,39 +275,39 @@ int removeHandler(char **commandArgv, int commandArgc, int client){
     //Check the extension to deteemine if c txt or pdf
     if(pathExt != NULL){ 
         if (strcmp(pathExt, ".c") == 0) {
-            //printf("Process for REMOVE .c\n");
+            // To remove .c file
             removeCFiles(fullPath, client);
             
         }else if (strcmp(pathExt, ".txt") == 0) {
-            //printf("Process for REMOVE .txt\n");
+            // To remove .txt file
             downloadFromServers(buffer, "txt" , client);
         } else if (strcmp(pathExt, ".pdf") == 0) {
-            printf("Process for REMOVE .pdf\n");
-            printf("Process for REMOVE .pdf\n");
+            // To remove .pdf file
             char *mainfolder = "~smain";
 
             char command[100];
 
             char path[100];
+            // constructing command to send to server
             strcpy(path, commandArgv[1] + strlen(mainfolder) + 1);
             strcpy(command, commandArgv[0]);
             strcat(command, " ");
             strcat(command, path);
             strcat(command, " ");
 
-            int server = connecttoserver(command, "pdf");
+            int server = connecttoserver(command, "pdf"); // connecting to pdf server
             if (server < 0) {
                 printf("\nError establishing connection to pdf server\n");
                 return -1;
             }
             char status[1];
-            int recvstatusbytes = recv(server, status, 1, 0);
+            int recvstatusbytes = recv(server, status, 1, 0); // get status from server
             if(recvstatusbytes < 0) {
                 printf("\nError deleting file\n");
                 close(server);
                 return -1;
             }
-            printf("%s\n", status);
+            // check if successful or not and send appropriate message to client
             if(status[0] == '0') {
                 printf("\nFile does not exist\n");
                 char *msg = "File does not exist on the server.";
@@ -456,10 +457,10 @@ void tarHandler(char **commandArgv, int commandArgc, int client){
     }
 }
 
-//Sheldon
+// Function to connect to pdf and text servers and send command entered by user
 int connecttoserver(char* command, char* servername) {
     int server;
-    char* port = strcmp(servername, "pdf") == 0? "9533": "9534";
+    char* port = strcmp(servername, "pdf") == 0? "9533": "9534"; // pdf server is on port 9533 while text is on port 9534
     char* ipaddr = "127.0.0.1";
     int portNumber;
     struct sockaddr_in servAdd;
@@ -486,12 +487,12 @@ int connecttoserver(char* command, char* servername) {
     }
     
 
-    write(server, command, strlen(command) + 1);
+    write(server, command, strlen(command) + 1); // send command
 
     return server;
 }
 
-//Sheldon
+// Function to get file names for display command for pdf and text servers and send to client
 int getfilesfromserver(char* command, char* servername, int client) {
     int server = connecttoserver(command, servername);
     if (server < 0) {
@@ -519,12 +520,14 @@ int getfilesfromserver(char* command, char* servername, int client) {
     return 0;
 }
 
-//Sheldon
+// Function for display command to send files to client 
 int listfiles(char* userpath, int client) {
 
     char path[100];
     char *mainfolder = "~smain";
     int pathprovided = 1;
+
+    // getting path
     if (strcmp(userpath, mainfolder) == 0)
     {
         pathprovided=0;
@@ -532,6 +535,8 @@ int listfiles(char* userpath, int client) {
     }
     else
         strcpy(path, userpath + strlen(mainfolder) + 1);
+
+    // getting files from main server
     struct stat st;
     if(stat(path, &st) != 0 || !S_ISDIR(st.st_mode)) {
         printf("\nDirectory path does not exist in smain");
@@ -560,9 +565,6 @@ int listfiles(char* userpath, int client) {
             }
             sleep(0.5);
         }
-        // else if (direntry->d_type == DT_DIR) {
-        //     listfiles(new_path);
-        // }
         }
         closedir(directory);
     }
@@ -574,10 +576,13 @@ int listfiles(char* userpath, int client) {
     strcat(command, path);
     command[strlen(command)] = '\0';
 
+    // getting files from pdf server
     int serverstatus = getfilesfromserver(command, "pdf", client);
     if(serverstatus < 0) {
-        printf("\nError getting files from Text Server\n");
+        printf("\nError getting files from Pdf Server\n");
     }
+
+    // getting files from text server
     serverstatus = getfilesfromserver(command, "text", client);
     if(serverstatus < 0) {
         printf("\nError getting files from Text Server\n");
@@ -598,7 +603,7 @@ int listfiles(char* userpath, int client) {
 
 }
 
-//Sheldon
+// Function to upload file to pdf or text server
 int uploadtoserver(int client, int server) {
     int filesize;
     char filesizebuf[100];
@@ -609,6 +614,7 @@ int uploadtoserver(int client, int server) {
         return 1;
     }
 
+    // getting file size from client and sending to the server
     char* sendmessage = "sendsize";
     int sendmessagebytes = send(client, sendmessage, strlen(sendmessage), 0);
     if (sendmessagebytes < 0) {
@@ -629,7 +635,7 @@ int uploadtoserver(int client, int server) {
     n = send(server, filesizebuf, strlen(filesizebuf), 0);
 
     if (n < 0) {
-        printf("\nSend filesize to text server failed\n");
+        printf("\nSend filesize to server failed\n");
         return 1;
     }
 
@@ -643,8 +649,7 @@ int uploadtoserver(int client, int server) {
     char* message = "received";
     send(client, message, strlen(message), 0);
 
-    printf("\nTransferring to text\n");
-
+    // receiving bytes from client and sending to server
     int totalbytesread = 0;
     char filebuf[100];
     while (totalbytesread < filesize) {
@@ -660,12 +665,12 @@ int uploadtoserver(int client, int server) {
     return 0;
 }
 
-//Sheldon
+// If file needs to be uploaded to main server
 int uploadtomain(int client, char* destpath, int pathprovided, char* filename) {
     struct stat st;
     // Check if the directory exists
     if (pathprovided && (stat(destpath, &st) != 0 || !S_ISDIR(st.st_mode))) {
-        // Directory does not exist, attempt to create it
+        // If directory does not exist, attempt to create it
         char newpath[100] = "";
         int count = 0;
         char temppath[100];
@@ -677,7 +682,7 @@ int uploadtomain(int client, char* destpath, int pathprovided, char* filename) {
             if (stat(newpath, &st) != 0 || !S_ISDIR(st.st_mode)) {
                 if (mkdir(newpath, 0700) != 0) {
                     perror("mkdir failed");
-                    return -1; // Failed to create directory
+                    return -1;
                 }
             }
         }
@@ -686,6 +691,7 @@ int uploadtomain(int client, char* destpath, int pathprovided, char* filename) {
     int filesize;
     char filesizebuf[100];
 
+    // Informing client to send size of file
     char* sendmessage = "sendsize";
     int sendmessagebytes = send(client, sendmessage, strlen(sendmessage), 0);
     if (sendmessagebytes < 0) {
@@ -693,7 +699,7 @@ int uploadtomain(int client, char* destpath, int pathprovided, char* filename) {
         return 1;
     }
 
-    // get size of file
+    // Get size of file
     int recbytes = read(client, filesizebuf, 100);
     if (recbytes < 0) {
         printf("\nError receiving filesize\n");
@@ -718,6 +724,7 @@ int uploadtomain(int client, char* destpath, int pathprovided, char* filename) {
     char* message = "received";
     send(client, message, strlen(message), 0);
 
+    // get file bytes from client
     while (totalbytesread < filesize) {
         // int bytesread = read(client, filebuf, 100);
         int bytesread = recv(client, filebuf, 100, 0);
@@ -732,7 +739,7 @@ int uploadtomain(int client, char* destpath, int pathprovided, char* filename) {
     return 0;
 }
 
-//Sheldon
+// Function called if file needs to be uploaded to server
 int ufilecommand(char* cmd, char* filename, char* dest, int client) {
     char* mainfolder = "~smain";
     char servername[5];
@@ -754,7 +761,7 @@ int ufilecommand(char* cmd, char* filename, char* dest, int client) {
             strcpy(ext, "");
         } else strcpy(ext, dot + 1);
 
-        if (strcmp(ext, "txt") == 0) {
+        if (strcmp(ext, "txt") == 0) { // if text file needs to be ploaded
             strcpy(servername, "text");
 
             char command[100];
@@ -768,9 +775,6 @@ int ufilecommand(char* cmd, char* filename, char* dest, int client) {
             else
                 strcat(command, "/");
 
-
-            printf("\nText Command %s\n", command);
-
             server = connecttoserver(command, servername);
 
             if(server < 0) {
@@ -781,9 +785,9 @@ int ufilecommand(char* cmd, char* filename, char* dest, int client) {
             int serverstatus = uploadtoserver(client, server);
 
             close(server);
-            printf("\nDone\n");
+            printf("\nCompleted Upload Functionality\n");
             return serverstatus;
-        } else if (strcmp(ext, "pdf") == 0) {
+        } else if (strcmp(ext, "pdf") == 0) { // if pdf needs to be uploaded
             strcpy(servername, "pdf");
              char command[100];
 
@@ -797,19 +801,18 @@ int ufilecommand(char* cmd, char* filename, char* dest, int client) {
                 strcat(command, "/");
 
 
-            printf("\nPDF Command %s\n", command);
 
             server = connecttoserver(command, servername);
 
             if(server < 0) {
-                printf("\nError establishing connection to text server\n");
+                printf("\nError establishing connection to pdf server\n");
                 return 1;
             }
 
             int serverstatus = uploadtoserver(client, server);
 
             close(server);
-            printf("\nDone\n");
+            printf("\nCompleted Upload Functionality\n");
             return serverstatus;
         } else if (strcpy(servername, "c")) {
             strcpy(servername, "main");
@@ -818,14 +821,16 @@ int ufilecommand(char* cmd, char* filename, char* dest, int client) {
             return 1;
         }
 
+        // If file needs to be uploaded to main
         if (strcmp(servername, "main") == 0) {
             int uploadstatus = uploadtomain(client, destpath, pathprovided, filename);
-            printf("\nDone\n");
+            printf("\nCompleted Upload Functionality\n");
             return uploadstatus;
         }
     }
 }
 
+// Function to process client command
 int prcclient(char* userinput, int client) {
     char cmd[100];
     char filename[100];
@@ -845,15 +850,8 @@ int prcclient(char* userinput, int client) {
             char * message = "Upload Failed";
             send(client, message, strlen(message), 0);
         }
-    } else if (strcmp(cmd, "display") == 0) {
+    } else if (strcmp(cmd, "display") == 0) { // display command
         int success = listfiles(filename, client);
-        // if (success == 0) {
-        //     char * message = "Successful";
-        //     send(client, message, strlen(message), 0);
-        // } else {
-        //     char * message = "Failed";
-        //     send(client, message, strlen(message), 0);
-        // }
     }
 
     //Splitting command into individual commands for executionn
@@ -880,10 +878,7 @@ int prcclient(char* userinput, int client) {
   
 int main(int argc, char *argv[]){
 
-char *myTime;
-time_t currentUnixTime; // time.h
 int sd, client, portNumber;
-socklen_t len;
 struct sockaddr_in servAdd;
 
 if(argc != 2){
@@ -908,6 +903,8 @@ if (listen(sd, 5) < 0) {
     perror("listen failed");
     exit(1);
 }
+
+// To accept a new client and process the command in a new process
 while(1) {
     
     client=accept(sd,(struct sockaddr*)NULL,NULL);//accept()
