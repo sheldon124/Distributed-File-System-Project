@@ -17,7 +17,7 @@
 #define PORT 3400
 #define MAXSIZE 1024
 
-//Shane WIP
+//Utility function to check Ip format before program start
 // bool checkIPFormat(const char *ip) {
 //     regex_t regex;
 //     const char *pattern = "^([0-9]{1,3}\\.){3}[0-9]{1,3}$";
@@ -31,8 +31,7 @@
 //     }
 // }
 
-//Shane WIP
-// Utility Function to remove the \n and trim te strting end ending white spaces if presnt
+// Utility Fuction to remove the \n and trim te strting end ending white spaces if presnt
 void trimAndRemoveNewLine(char *input){
     if(input[0] != '\0' && input != NULL){ //Check if first character is not empty, n has characters
 
@@ -40,7 +39,7 @@ void trimAndRemoveNewLine(char *input){
         int startIndex = 0;
         int endIndex = strlen(input) - 1;
 
-        //Replace New lin with Null and updting endIndex as can be --> "dter \n"
+        //Replace New lin with Null and updting endIndex as can be --> "sample.c \n"
         if(input[endIndex] == '\n'){
             input[endIndex] = '\0';
             endIndex--;
@@ -68,8 +67,7 @@ void trimAndRemoveNewLine(char *input){
     }
 }  
 
-//Shane WIP
-// Utility function to break down commands into indivudal commands to prepare for execution
+// Utility funcion to brek down comands into indivydal commsnds to prepare for execution
 void commandSplitter(char *input, char **commandArgv, int *commandArgc) {
     int index = 0;
     char *currentCmd;
@@ -87,18 +85,17 @@ void commandSplitter(char *input, char **commandArgv, int *commandArgc) {
     *commandArgc = index; //Assigning the value of index as count ref
 }
 
-//Shane WIP
-//Utility function to check the file extension of the path entered by user
+//Utility finction to check the file extensin of the path entered by user
 bool checkFileExtension(const char *file){
     if(file == NULL){ //Check if user entered a file argument
         return false;
     }
 
-    //Extract the Extension from the path via a reverse loop
+    //Extract the Extension frim the path via a reverse loop
     const char *pathExt = NULL;
     for(int i = strlen(file); i>=0; i--){
 
-        // Identifying the first dot from reverse
+        // Identifing the forst dot from reverse
         if(file[i] == '.'){ //abc.pdf => .pdf
             pathExt = &file[i];//Store in the extension
             break; // Exit the loop when found
@@ -114,9 +111,9 @@ bool checkFileExtension(const char *file){
     return (strcmp(pathExt, ".txt") == 0 || strcmp(pathExt, ".pdf") == 0 || strcmp(pathExt, ".c") == 0) ? true : false;
 }
 
-//Shane WIP
+//Utility funcrtion to check the path passed by the user
 bool checkTildePath(const char *path){
-    //Check if user has entered a path 
+    //Check if user has entred a path 
     if(!path) return false;
 
     //Check if path starts with ~smain
@@ -127,11 +124,10 @@ bool checkTildePath(const char *path){
     return true;
 }
 
-//Shane WIP
 //Utility function to check the user commands wrt operation commands
 bool checkInput(char **commandArgv, int commandArgc){
 
-    //Upon pressing Enter will not do anything
+    //Upon presing Enter wil not di anything
     if(commandArgc < 1){
         return false;
     }
@@ -145,7 +141,7 @@ bool checkInput(char **commandArgv, int commandArgc){
             return false;
         }
 
-        //Check the second arg is a file and has correct file extension
+        //Check the secomd arg is a file and has correct file extension
         if(!checkFileExtension(commandArgv[1])){
             printf("Second command must be a file with extension, like sample.c\n");
             printf("Note: Only .c .pdf .txt files allowed\n");
@@ -199,7 +195,7 @@ bool checkInput(char **commandArgv, int commandArgc){
             return false;
         }
 
-        //Check if valid extension is provided
+        //Check if valid exension is provided
         if (strcmp(commandArgv[1], ".c") != 0 && strcmp(commandArgv[1], ".pdf") != 0 && strcmp(commandArgv[1], ".txt") != 0) {
             printf("Invalid extension '%s'. Please enter '.txt', '.pdf', or '.c'.\n", commandArgv[1]);
             return false;
@@ -212,8 +208,7 @@ bool checkInput(char **commandArgv, int commandArgc){
     return true;
 }
 
-//Shane WIP
-//Utility function to extract the file name
+//Utility function to extrsct the file name
 const char* extractFileName(const char* path){
     const char *fileName = NULL;
     for(int i = strlen(path); i>=0; i--){
@@ -225,31 +220,19 @@ const char* extractFileName(const char* path){
     return fileName;
 }
 
-//Shane WIP
-//Function to create destination path where the file has to be saved
+//Function to create destination path where the file hs to be saved
 char* createDestinationPath(const char *filePath) {
 
     //Get the current pwd
     char pwd[1024];
-    if (getcwd(pwd, sizeof(pwd)) != NULL) {
-        //printf("Current Working Directory %s\n", pwd);  
-    }else{
-        printf("Current Working Directory can not be determined.\n");  
+    if (getcwd(pwd, sizeof(pwd)) == NULL) {
+        printf("Current Working Directory can not be determined.\n"); 
     }
-
-    // Create the downloads directory, if not there
-    // if (mkdir("/home/dsouza56/project/client/downloads/", 0777) == -1) { 
-    //     // Check if the error occurred due to the directory already existing
-    //     if (errno != EEXIST) {
-    //         perror("Error creating downloads directory");
-    //         return NULL;
-    //     }
-    // }
 
     //Extract the file name
     const char *fileName = extractFileName(filePath);
 
-    //Constructing the full absolute path
+    //Constructing the full destination path
     static char destinationPath[MAXSIZE];
     strcpy(destinationPath, pwd);
     strcat(destinationPath, "/");
@@ -258,10 +241,10 @@ char* createDestinationPath(const char *filePath) {
     return destinationPath;
 }
 
-//Shane WIP
+//Function to download a fil received from the server onto the client pwd
 void downloadingFile(int server, const char *filePath){
 
-    //Constructing the destination directory
+    //Constructng the destinatin directory
     char *destinationPath = createDestinationPath(filePath);
     if (destinationPath == NULL) {
         printf("Download path could not be created.\n");
@@ -269,9 +252,9 @@ void downloadingFile(int server, const char *filePath){
     }
     
     char buffer[MAXSIZE];
-    ssize_t bytesRead;
+    long int bytesRead;
 
-    // Opens File Descriptor in Read Only from the source file
+    // Opens File Descrptor in Read Only from the soufce file
     umask(0000);
     int fdDest = open(destinationPath, O_WRONLY | O_CREAT | O_TRUNC, 0777);
     if (fdDest < 0) { //Error Check
@@ -279,35 +262,28 @@ void downloadingFile(int server, const char *filePath){
         return;
     }
 
-    // Receive data and write into a destination file
-    while ((bytesRead = recv(server, buffer, sizeof(buffer), 0)) > 0) { //Read up to 1024 bytes from the server and will continue until all bytes read
-        if (write(fdDest, buffer, bytesRead) < 0) { //Writing to the file
+    // Rece9ive data and write into a destination file
+    while ( ( bytesRead = recv(server, buffer, sizeof(buffer), 0)) > 0) { //Read up to 1024 bytes from the server and will continue until all bytes read
+        long int bytesWrite = write(fdDest, buffer, bytesRead); //Writing to the file
+        if (bytesWrite < 0) { //Iff err occurs during read
             printf("Error occured when writing to destination file");
             close(fdDest);
             return;
         }
     }
 
-    //If error occus when reading from the data sent by server
-    //printf(bytesRead < 0 ? "Error occured while receiving file from server" : "File transfered successfully.\n");
-    if (bytesRead < 0) {  // If recv() returned an error
-        perror("Error occurred while receiving tar file from server");
-    } else if (bytesRead == 0) {  // Connection closed by server, indicating end of file
-        printf("Tar file transferred successfully.\n");
-    }
+    //If errr occus when readong from the data sent by server
+    printf(bytesRead < 0 ? "Error occured while receiving file from server" : "File transfered successfully.\n");
 
     close(fdDest);
-
 }
 
-//Shane WIP
 //Function will take server response and perform operation downloading operation
 void handleServerResponse(int server, char **commandArgv) {
     char serverRes[MAXSIZE];
-    ssize_t bytesRead;
 
-    //Receive data
-    bytesRead = recv(server, serverRes, MAXSIZE - 1, 0); //-1 reserves space for Null terminator, 0 is a flag
+    //Receive data the server
+    long int bytesRead = recv(server, serverRes, MAXSIZE - 1, 0); //-1 reserves space for Null terminator, 0 is a flag
     if (bytesRead < 0) {
         printf("Error receiving server response\n");
         return;
@@ -320,7 +296,7 @@ void handleServerResponse(int server, char **commandArgv) {
         //printf("File transfer initiated by server.\n");
         downloadingFile(server, commandArgv[1]);
     } 
-    else if ( strlen(serverRes) >= 4 && strcmp(serverRes + strlen(serverRes) - 4, ".tar") == 0 ) { //if dtar is received, means it has to expect a download tar file
+    else if (strstr(serverRes, ".tar")) { //if dtar is received, means it has to expect a download tar file
         //printf("Dtar transfer initiated by server.\n");
         downloadingFile(server, serverRes);
     }else{ //Incase server has to send err messages
@@ -442,7 +418,7 @@ int main(int argc, char *argv[]){
     int commandArgc  = 0;
     char *commandArgv[200]; 
 
-
+        
         bool validInput = false;
 
         while(!validInput){
@@ -461,7 +437,7 @@ int main(int argc, char *argv[]){
         }
 
 
-        //Converting argv into a single buffer
+        //Converting individual args into a single buffer
         char buffer[MAXSIZE];
         buffer[0] = '\0';
         for (int i = 0; i < commandArgc; i++) {
@@ -494,22 +470,24 @@ int main(int argc, char *argv[]){
     }
 
         //write(server, userCommand, strlen(userCommand) + 1); // Include null terminator in write
-        ssize_t bytes_written = write(server, buffer, strlen(buffer) + 1); // Include null terminator in write
-        if (bytes_written < 0) {
+        long int bytesWrite = write(server, buffer, strlen(buffer) + 1); // Include null terminator in write
+        if (bytesWrite < 0) {
             printf("Client: write() failure\n");
             exit(4);
         }
 
-        if(strcmp(commandArgv[0], "ufile") == 0) {
+        //Identifiers to furtherrr handle server responsees
+        if(strcmp(commandArgv[0], "ufile") == 0) { //ufile identifier
             uploadfile(server, commandArgv[1]);
             handleServerResponse(server, commandArgv);
         }
-        else if(strcmp(commandArgv[0], "display") == 0) {
+        else if(strcmp(commandArgv[0], "display") == 0) { //Dislay process identier
             displayfiles(server);
         }
-        else if(strcmp(commandArgv[0], "dtar") == 0 || strcmp(commandArgv[0], "dfile") == 0) {
+        else if(strcmp(commandArgv[0], "dtar") == 0 || strcmp(commandArgv[0], "dfile") == 0) { //dtar and dfile odentifier
             handleServerResponse(server, commandArgv);
-        }else{
+        }
+        else if(strcmp(commandArgv[0], "rmfile") == 0){ //rmfile identifier
             //Read from pipe and display
             int bytes_read = read(server, message, MAXSIZE - 1);
             if (bytes_read < 0) {

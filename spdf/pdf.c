@@ -21,9 +21,9 @@
 #include <dirent.h>
 #define MAXSIZE 1024
 
+//Glbal Variabe to keep track if .pdf fles exists in the swrver directiry
 bool pdfFilesExist = false; //Global Var
 
-//Shane WIP
 // Utility function to break down commands into indivudal commands to prepare for execution
 void commandSplitter(char *input, char **commandArgv, int *commandArgc) {
     int index = 0;
@@ -42,8 +42,7 @@ void commandSplitter(char *input, char **commandArgv, int *commandArgc) {
     *commandArgc = index; //Assigning the value of index as count ref
 }
 
-//Shane WIP
-//Utility function to extract a file name
+//Utility function to eztract a file name from a path
 const char* extractFileName(const char* path){
     const char *fileName = NULL;
     for(int i = strlen(path); i>=0; i--){
@@ -55,8 +54,7 @@ const char* extractFileName(const char* path){
     return fileName;
 }
 
-//Shane WIP
-//Utility function to get the extension of a file by checking it backwards
+//Utilit funcion to get the extwnsion of a file by checkong it backwards
 const char* getFileExtension(const char *fullPath) {
     const char *pathExt = NULL;
     for(int i = strlen(fullPath) - 1; i >= 0; i--) {
@@ -68,7 +66,6 @@ const char* getFileExtension(const char *fullPath) {
     return pathExt;
 }
 
-//Shane WIP
 //Utility Function to chck if a file existss
 bool checkIfFileExists1(const char *filepath){
     struct stat fileInfo; // Stat func gets directory info
@@ -77,12 +74,13 @@ bool checkIfFileExists1(const char *filepath){
     return (stat(filepath, &fileInfo) == 0 && S_ISREG(fileInfo.st_mode)) ? true : false;
 }
 
-//Shane WIP
-//Function to check if a file is present as only .pdf files will exist on the main server
+//Function to cgeck if a file is present as only .pdf files wil exist on the msin server
 int containsPDFFiles(const char *filePath, const struct stat *FileInfo, int flag, struct FTW *ftwInfo){
     
     if(flag == FTW_F){ // Checks if is a File
         //printf("File Path Found: %s\n", filePath);
+
+        //Extrct extension frm psth and deteminw if is a .pdf file
         const char *pathExt = getFileExtension(filePath);
         if(pathExt != NULL && strcmp(pathExt, ".pdf") == 0){
             pdfFilesExist = true;
@@ -95,34 +93,33 @@ int containsPDFFiles(const char *filePath, const struct stat *FileInfo, int flag
     }
 }
 
-//Shane WIP
-//Utility function to construct the full absolute path
+//Utiity function to constuct the ful absolute pth
 char *constructFullPath(const char *path){
     
     //Get the current pwd
     char pwd[1024];
     if (getcwd(pwd, sizeof(pwd)) != NULL) {
-        //printf("Current Working Directory %s\n", pwd);  
-        //Constructing the full absolute path
+        
+        //Consructing the full absolute path
         static char fullPath[200];
         strcpy(fullPath, pwd);
-        strcat(fullPath, path + 6); //Append after ~smain
+        strcat(fullPath, path + 6); //Add after ~smain
         return fullPath;
     }else{
         printf("Current Working Directory can not be determined.\n");  
     }
 }
 
-//Shane WIP
 //Function that reads a files and transfer it to the main server
 void downloadHandler(const char *path, int client){
     //Constructing the full path
-    const char *fullPath = constructFullPath(path); //Will Fail if has folder structure
-    printf("Absoulute Path of file--->%s\n", fullPath);
+    const char *fullPath = constructFullPath(path); 
+    //printf("Absoulute Path of file--->%s\n", fullPath);
 
+    //First check if file eists in the directory
     if(!checkIfFileExists1(fullPath)){ 
         printf("File does not exist!\n");
-        char *errmsg = "File does not exist.";
+        char *errmsg = "File does not exist on the server.";
         write(client, errmsg, strlen(errmsg) + 1);
         return;
     }else{
@@ -131,9 +128,10 @@ void downloadHandler(const char *path, int client){
         long int bytesRead;
         long int bytesSent;
 
-        // Opens File Descriptor in Read Only permission from the source file
+        //Reading File
+        // Opens File Descrptor in Read Only permision from the source file
         int fdSrc = open(fullPath, O_RDONLY); 
-        if (fdSrc == -1) { // If can not open file send error message to client
+        if (fdSrc == -1) {  // If can not opn file send error mesage to client
             printf("Error whille opening the file.\n");
             char *errmsg = "File not found on server.";
             write(client, errmsg, strlen(errmsg) + 1); 
@@ -141,10 +139,10 @@ void downloadHandler(const char *path, int client){
             return;
         }
 
-        //File transfer indicator
-        write(client, "dfile", strlen("dfile"));
+        //Sening dfile to client, so clint can move to funvtion for proceing the chunkds it receives.
+        write(client, "dfile", strlen("dfile") + 1);
 
-        //Reading file in chunks and sending to client
+        //Readong file in chnks and sending to client
         while( ( bytesRead = read(fdSrc, fileBuffer, 1024) ) > 0 ){ //Read up to 1024 bytes and will continue until all bytes read
             bytesSent = send(client, fileBuffer, bytesRead, 0); //0 is for flag
             if (bytesSent < 0) {  //0 bytes must not be sent, must always be more then 0
@@ -156,12 +154,10 @@ void downloadHandler(const char *path, int client){
 
         //Error check
         printf(bytesRead < 0 ? "Error occured while receiving file from server" : "File succesfullly sent from server.\n");
-
         close(fdSrc);
     }
 }
 
-//Shane WIP
 //Function that tars pdf files and transfers it to the main server
 void tarHandler(int client){
 
@@ -173,53 +169,62 @@ void tarHandler(int client){
         write(client, errmsg, strlen(errmsg) + 1); 
     }
 
-    //Check if C Files exist on the smain server
+    //Check if pdf Files exist on the smain server bt traversing using the nftw system call
     const char *path = pwd;
     //const char *path = "~smain/";
-    if(nftw(path, containsPDFFiles, 50, FTW_PHYS ) == -1){ //If error occurs
+    if(nftw(path, containsPDFFiles, 50, FTW_PHYS ) == -1){ //If error occurs whilw traversng
         printf("Error occurred while visiting the directory '%s'\n", path);
         char *errmsg = "Server directory error.";
         write(client, errmsg, strlen(errmsg) + 1); 
         return; 
     }
 
+    //Check if .pdf files exist in the directory, if not then send messfe to client
     if(!pdfFilesExist){
         printf(".pdf files do not exist on the server\n");
         char *errmsg = ".pdf files not exist on the server.";
         write(client, errmsg, strlen(errmsg) + 1);
         return;
     }else{
-
+        //Creating tar file name, adding a timestamo to it
         char tarFileName[1024];
-        time_t now = time(NULL);
-        snprintf(tarFileName, sizeof(tarFileName), "%s/pdfTar-%ld.tar",path, now);
+        time_t currentTime = time(NULL);
+        snprintf(tarFileName, sizeof(tarFileName), "%s/pdfTar-%ld.tar",path, time(NULL));
 
+        //Peparing Tar executable Shell Commans commqnd. writ to the directory getting only all .pdf fles
         char tarExe[MAXSIZE];
-        snprintf(tarExe, sizeof(tarExe), "tar -czf %s -C %s $(find . -name '*.pdf')", tarFileName, path);
+        if(tarFileName && path){
+            snprintf(tarExe, sizeof(tarExe), "tar -czf %s -C %s $(find . -name '*.pdf')", tarFileName, path);
+        }
 
+        //Executing the tar command
         int result = system(tarExe);
-        if (result < 0) {
-            printf("Failed to create tarball\n");
-            char *errmsg = "Failed to create backup.";
+        if (result < 0) { //Error check
+            printf("Failed to create tar file\n");
+            char *errmsg = "Failed to create tar file.";
             write(client, errmsg, strlen(errmsg) + 1);
             return;
         }else{
             printf("Tar file creation success\n");
         }
 
+        //Send to main
+        //Open tar file, witg read permissions
         int tarfd = open(tarFileName, O_RDONLY);
-        if (tarfd < 0) {
+        if (tarfd < 0) { //Erro check and send message t client
             perror("Failed to open tar file for sending");
             const char *errmsg = "Failed to access tar file.";
             write(client, errmsg, strlen(errmsg) + 1);
             return;
         }
 
-        //File transfer indicator
+        //File transfer indicator so client know tar file download is about to come in
+        write(client, tarFileName, strlen(tarFileName) + 1);
+
         char fileBuffer[1024];
         long int bytesRead;
         long int bytesSent;
-        write(client, tarFileName, strlen(tarFileName));
+        
 
         //Reading file in chunks and sending to client
         while( ( bytesRead = read(tarfd, fileBuffer, 1024) ) > 0 ){ //Read up to 1024 bytes and will continue until all bytes read
@@ -232,10 +237,8 @@ void tarHandler(int client){
         }
 
         //Error check
-        printf(bytesRead < 0 ? "Error occured while receiving tar file from server" : "Tar file succesfullly sent from server.\n");
-
+        printf(bytesRead < 0 ? "Error occured while receiving file from server" : "File succesfullly sent from server.\n");
         close(tarfd);
-
     }
 }
 
@@ -424,11 +427,12 @@ int prcclient(char* inputcommand, int client) {
         }
     }
 
-    //Shane Change 
+    //Splitting command into individual commands for executionn
     int commandArgc  = 0;
     char *commandArgv[200]; 
     commandSplitter(inputcommand, commandArgv, &commandArgc);
 
+    //Command checks to perform respected operations
     if(strcmp(commandArgv[0], "dfile") == 0){ //If command starts with dfile, user wants to download a file
         printf("Processing for dfile in PDF server\n");
        downloadHandler(commandArgv[1], client);

@@ -21,9 +21,9 @@
 #include <dirent.h>
 #define MAXSIZE 1024
 
+//Glbal Variabe to keep track if .txt fles exists in the swrver directiry
 bool txtFilesExist = false;
 
-//Shane Change
 // Utility function to break down commands into indivudal commands to prepare for execution
 void commandSplitter(char *input, char **commandArgv, int *commandArgc) {
     int index = 0;
@@ -42,8 +42,7 @@ void commandSplitter(char *input, char **commandArgv, int *commandArgc) {
     *commandArgc = index; //Assigning the value of index as count ref
 }
 
-//Shane Change
-//Utility function to get the extension of a file by checking it backwards
+//Utilit funcion to get the extwnsion of a file by checkong it backwards
 const char* getFileExtension(const char *fullPath) {
     const char *pathExt = NULL;
     for(int i = strlen(fullPath) - 1; i >= 0; i--) {
@@ -55,7 +54,7 @@ const char* getFileExtension(const char *fullPath) {
     return pathExt;
 }
 
-//Utility function to extract a file name
+//Utility function to eztract a file name from a path
 const char* extractFileName(const char* path){
     const char *fileName = NULL;
     for(int i = strlen(path); i>=0; i--){
@@ -75,29 +74,30 @@ bool checkIfFileExists(const char *filepath){
     return (stat(filepath, &fileInfo) == 0 && S_ISREG(fileInfo.st_mode)) ? true : false;
 }
 
-//Utility function to construct the full absolute path
+//Utiity function to constuct the ful absolute pth
 char *constructFullPath(const char *path){
     
     //Get the current pwd
     char pwd[1024];
     if (getcwd(pwd, sizeof(pwd)) != NULL) {
-        //printf("Current Working Directory %s\n", pwd);  
+        
         //Constructing the full absolute path
         static char fullPath[200];
         strcpy(fullPath, pwd);
-        strcat(fullPath, path + 6); //Append after ~smain
+        strcat(fullPath, path + 6); //addss after ~smain
         return fullPath;
     }else{
         printf("Current Working Directory can not be determined.\n");  
     }
 }
 
-//Shane Change
-//Function to check if a file is present as only .txt files will exist on the main server
+//Function to cgeck if a file is present as only .txt files wil exist on the msin server
 int containsTXTFiles(const char *filePath, const struct stat *FileInfo, int flag, struct FTW *ftwInfo){
     
     if(flag == FTW_F){ // Checks if is a File
         //printf("File Path Found: %s\n", filePath);
+
+        //Extrct extension frm psth and deteminw if is a .txt file
         const char *pathExt = getFileExtension(filePath);
         if(pathExt != NULL && strcmp(pathExt, ".txt") == 0){
             txtFilesExist = true;
@@ -110,13 +110,13 @@ int containsTXTFiles(const char *filePath, const struct stat *FileInfo, int flag
     }
 }
 
-//Shane WIP
 //Function that reads a files and transfer it to the main server
 void downloadHandler(const char *path, int client){
     //Constructing the full path
-    const char *fullPath = constructFullPath(path); //Will Fail if has folder structure
+    const char *fullPath = constructFullPath(path); 
     //printf("Full Path--->%s\n", fullPath);
 
+    //First check if file eists in the directory
     if(!checkIfFileExists(fullPath)){ 
         printf("File does not exist!\n");
         char *errmsg = "File does not exist.";
@@ -128,7 +128,8 @@ void downloadHandler(const char *path, int client){
         long int bytesRead;
         long int bytesSent;
 
-        // Opens File Descriptor in Read Only permission from the source file
+        //Reading File
+        // Opens File Descritor in Read Only permssion from the source file
         int fdSrc = open(fullPath, O_RDONLY); 
         if (fdSrc == -1) { // If can not open file send error message to client
             printf("Error whille opening the file.\n");
@@ -138,8 +139,8 @@ void downloadHandler(const char *path, int client){
             return;
         }
 
-        //File transfer indicator
-        write(client, "dfile", strlen("dfile"));
+        //Sening dfile to client, so clint can move to funvtion for proceing the chunkds it receives.
+        write(client, "dfile", strlen("dfile") + 1);
 
         //Reading file in chunks and sending to client
         while( ( bytesRead = read(fdSrc, fileBuffer, 1024) ) > 0 ){ //Read up to 1024 bytes and will continue until all bytes read
@@ -153,7 +154,6 @@ void downloadHandler(const char *path, int client){
 
         //Error check
         printf(bytesRead < 0 ? "Error occured while receiving file from server" : "File succesfullly sent from server.\n");
-
         close(fdSrc);
     }
 }
@@ -169,53 +169,60 @@ void tarHandler(int client){
         write(client, errmsg, strlen(errmsg) + 1); 
     }
 
-    //Check if C Files exist on the smain server
+     //Check if .txt Files exist on the smain server bt traversing using the nftw system call
     const char *path = pwd;
     //const char *path = "~smain/";
-    if(nftw(path, containsTXTFiles, 50, FTW_PHYS ) == -1){ //If error occurs
+    if(nftw(path, containsTXTFiles, 50, FTW_PHYS ) == -1){ //If error occurs whilw traversng
         printf("Error occurred while visiting the directory '%s'\n", path);
         char *errmsg = "Server directory error.";
         write(client, errmsg, strlen(errmsg) + 1); 
         return; 
     }
 
+    //Check if .txt files exist in the directory, if not then send messfe to client
     if(!txtFilesExist){
         printf(".txt files do not exist on the server\n");
         char *errmsg = ".txt files not exist on the server.";
         write(client, errmsg, strlen(errmsg) + 1);
         return;
     }else{
-
+        //Creating tar file name, adding a timestamo to it
         char tarFileName[1024];
-        time_t now = time(NULL);
-        snprintf(tarFileName, sizeof(tarFileName), "%s/txtTar-%ld.tar",path, now);
+        time_t currentTime = time(NULL);
+        snprintf(tarFileName, sizeof(tarFileName), "%s/txtTar-%ld.tar",path, time(NULL));
 
         char tarExe[MAXSIZE];
-        snprintf(tarExe, sizeof(tarExe), "tar -czf %s -C %s $(find . -name '*.txt')", tarFileName, path);
+        if(tarFileName && path){
+            snprintf(tarExe, sizeof(tarExe), "tar -czf %s -C %s $(find . -name '*.txt')", tarFileName, path);
+        }
 
+        //Executing the tar command
         int result = system(tarExe);
-        if (result < 0) {
-            printf("Failed to create tarball\n");
-            char *errmsg = "Failed to create backup.";
+        if (result < 0) { //Error check
+            printf("Failed to create tar file\n");
+            char *errmsg = "Failed to create tar file.";
             write(client, errmsg, strlen(errmsg) + 1);
             return;
         }else{
             printf("Tar file creation success\n");
         }
 
+        //Send to main
+        //Open tar file, witg read permissions
         int tarfd = open(tarFileName, O_RDONLY);
-        if (tarfd < 0) {
+        if (tarfd < 0) { //Erro check and send message t client
             perror("Failed to open tar file for sending");
             const char *errmsg = "Failed to access tar file.";
             write(client, errmsg, strlen(errmsg) + 1);
             return;
         }
 
-        //File transfer indicator
+        //File transfer indicator so client know tar file download is about to come in
+        write(client, tarFileName, strlen(tarFileName) + 1);
+
         char fileBuffer[1024];
         long int bytesRead;
         long int bytesSent;
-        write(client, tarFileName, strlen(tarFileName));
 
         //Reading file in chunks and sending to client
         while( ( bytesRead = read(tarfd, fileBuffer, 1024) ) > 0 ){ //Read up to 1024 bytes and will continue until all bytes read
@@ -228,14 +235,15 @@ void tarHandler(int client){
         }
 
         //Error check
-        printf(bytesRead < 0 ? "Error occured while receiving tar file from server" : "Tar file succesfullly sent from server.\n");
-
+        printf(bytesRead < 0 ? "Error occured while receiving File from server" : "File succesfullly sent from server.\n");
         close(tarfd);
-
     }
 }
 
+//Function to determine which server will process the removal
 void removeHandler(const char *path, int client){
+
+    //Constructing full path
     const char *fullPath = constructFullPath(path);
 
     //First check if file exists in the directory
@@ -245,7 +253,7 @@ void removeHandler(const char *path, int client){
         write(client, msg, strlen(msg) + 1);
         return;
     }else{
-        printf("File Exists\n");
+        //Remove the file using the remove
         if (remove(fullPath) == -1) { 
             printf("Could not remove File\n");
             char *msg = "Could not remove file from server.";
@@ -260,6 +268,7 @@ void removeHandler(const char *path, int client){
 
 }
 
+//Sheldon
 int listfiles(char* userpath, int client) {
     char path[100];
     userpath[0] != '.'? strcpy(path, userpath): strcpy(path, "./");
@@ -310,6 +319,7 @@ int listfiles(char* userpath, int client) {
     return 0;
 }
 
+//SHeldon
 int ufilecommand(char *cmd, char *filename, char *dest, int client) {
     int pathprovided = 1;
     char destpath[100];
@@ -412,10 +422,12 @@ int prcclient(char* inputcommand, int client) {
     }
 
 
-    //Shane Change 
+    //Splitting command into individual commands for executionn
     int commandArgc  = 0;
     char *commandArgv[200]; 
     commandSplitter(inputcommand, commandArgv, &commandArgc);
+
+    //Command checks to perform respected operations
     if(strcmp(commandArgv[0], "dfile") == 0){ //If command starts with dfile, user wants to download a file
         printf("Processing for dfile in TXT server\n");
         downloadHandler(commandArgv[1], client);
