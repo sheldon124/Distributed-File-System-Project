@@ -209,7 +209,7 @@ void tarHandler(int client){
         }
 
         //Send to main
-        //Open tar file, witg read permissions
+        //Open tar file, with read permissions
         int tarfd = open(tarFileName, O_RDONLY);
         if (tarfd < 0) { //Erro check and send message t client
             perror("Failed to open tar file for sending");
@@ -256,7 +256,7 @@ bool checkIfFileExists(const char *filepath){
 
 // Function to display list of files on server
 int listfiles(char* userpath, int client) {
-    char path[100];
+    char path[MAXSIZE];
     userpath[0] != '.'? strcpy(path, userpath): strcpy(path, "./");
     struct stat st;
     if(stat(path, &st) != 0 || !S_ISDIR(st.st_mode)) { // check if directory exists
@@ -304,7 +304,7 @@ int listfiles(char* userpath, int client) {
 // Function to upload files to server
 int ufilecommand(char *cmd, char *filename, char *dest, int client) {
     int pathprovided = 1;
-    char destpath[100];
+    char destpath[MAXSIZE];
     struct stat st;
 
     if (strcmp(dest, "/") == 0) {
@@ -317,9 +317,9 @@ int ufilecommand(char *cmd, char *filename, char *dest, int client) {
     // create directory path if it does not exist
     if (pathprovided && (stat(destpath, &st) != 0 || !S_ISDIR(st.st_mode))) {
         // Directory does not exist, attempt to create it
-        char newpath[100] = "";
+        char newpath[MAXSIZE] = "";
         int count = 0;
-        char temppath[100];
+        char temppath[MAXSIZE];
         strcpy(temppath, destpath);
         for (char *separator = strtok(temppath, "/"); separator != NULL; separator = strtok(NULL, "/"), count += 1) {
             if (count != 0)
@@ -335,7 +335,7 @@ int ufilecommand(char *cmd, char *filename, char *dest, int client) {
     }
 
     int filesize;
-    char filesizebuf[100];
+    char filesizebuf[MAXSIZE];
 
     char* sendmessage = "sendsize";
     int sendmessagebytes = send(client, sendmessage, strlen(sendmessage), 0); // ask to get size from client
@@ -344,7 +344,7 @@ int ufilecommand(char *cmd, char *filename, char *dest, int client) {
         return 1;
     }
     // get size of file
-    int recbytes = read(client, filesizebuf, 100);
+    int recbytes = read(client, filesizebuf, MAXSIZE);
     if (recbytes < 0)
     {
         printf("\nError receiving filesize\n");
@@ -372,13 +372,12 @@ int ufilecommand(char *cmd, char *filename, char *dest, int client) {
     send(client, message, strlen(message), 0);
 
     int totalbytesread = 0;
-    char filebuf[100];
+    char filebuf[MAXSIZE];
 
     // Get bytes from main
     while (totalbytesread < filesize)
     {
-        // int bytesread = read(client, filebuf, 100);
-        int bytesread = recv(client, filebuf, 100, 0);
+        int bytesread = recv(client, filebuf, MAXSIZE, 0);
         totalbytesread += bytesread;
         int writebytes = write(fd, filebuf, bytesread);
         if (writebytes < 0)
@@ -406,9 +405,9 @@ int removefile(char* filepath) {
 
 // Function to process client request based on input command
 int prcclient(char* inputcommand, int client) {
-    char cmd[100];
-    char filename[100];
-    char dest[100];
+    char cmd[MAXSIZE];
+    char filename[MAXSIZE];
+    char dest[MAXSIZE];
     sscanf(inputcommand, "%s %s %s", cmd, filename, dest); // get command from main server
     if(strcmp(cmd, "ufile") == 0) { // process ufile command
         return ufilecommand(cmd, filename, dest, client);
@@ -488,8 +487,8 @@ while(1) {
     
     // Child process handles the client
     if (pid == 0) {
-    char buff1[100];
-    int bytes_read = read(client, buff1, 100); // Get command from client
+    char buff1[MAXSIZE];
+    int bytes_read = read(client, buff1, MAXSIZE); // Get command from client
     if (bytes_read < 0) {
         printf("Server: read() failure\n");
         exit(3);

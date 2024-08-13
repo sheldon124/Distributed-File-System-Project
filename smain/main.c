@@ -285,9 +285,9 @@ int removeHandler(char **commandArgv, int commandArgc, int client){
             // To remove .pdf file
             char *mainfolder = "~smain";
 
-            char command[100];
+            char command[MAX_LEN];
 
-            char path[100];
+            char path[MAX_LEN];
             // constructing command to send to server
             strcpy(path, commandArgv[1] + strlen(mainfolder) + 1);
             strcpy(command, commandArgv[0]);
@@ -500,9 +500,9 @@ int getfilesfromserver(char* command, char* servername, int client) {
         return -1;
     }
 
-    char filename[100];
+    char filename[MAX_LEN];
     int sizereceived;
-    while(((sizereceived = recv(server, filename, 100, 0))) > 0) {
+    while(((sizereceived = recv(server, filename, MAX_LEN, 0))) > 0) {
         filename[sizereceived] = '\0';
         if(strcmp(filename, "complete") == 0) {
             break;
@@ -523,7 +523,7 @@ int getfilesfromserver(char* command, char* servername, int client) {
 // Function for display command to send files to client 
 int listfiles(char* userpath, int client) {
 
-    char path[100];
+    char path[MAX_LEN];
     char *mainfolder = "~smain";
     int pathprovided = 1;
 
@@ -569,7 +569,7 @@ int listfiles(char* userpath, int client) {
         closedir(directory);
     }
 
-    char command[100];
+    char command[MAX_LEN];
 
     strcpy(command, "display");
     strcat(command, " ");
@@ -606,8 +606,8 @@ int listfiles(char* userpath, int client) {
 // Function to upload file to pdf or text server
 int uploadtoserver(int client, int server) {
     int filesize;
-    char filesizebuf[100];
-    char sendbytesmessage[100];
+    char filesizebuf[MAX_LEN];
+    char sendbytesmessage[MAX_LEN];
 
     if(recv(server, sendbytesmessage, 8, 0) < 0) {
         printf("\nRecv failed: Unable to send files to server\n");
@@ -622,7 +622,7 @@ int uploadtoserver(int client, int server) {
         return 1;
     }
     // get size of file
-    int recbytes = read(client, filesizebuf, 100);
+    int recbytes = read(client, filesizebuf, MAX_LEN);
     if (recbytes < 0) {
         printf("\nError receiving filesize\n");
         return 1;
@@ -651,10 +651,9 @@ int uploadtoserver(int client, int server) {
 
     // receiving bytes from client and sending to server
     int totalbytesread = 0;
-    char filebuf[100];
+    char filebuf[MAX_LEN];
     while (totalbytesread < filesize) {
-        // int bytesread = read(client, filebuf, 100);
-        int bytesread = recv(client, filebuf, 100, 0);
+        int bytesread = recv(client, filebuf, MAX_LEN, 0);
         totalbytesread += bytesread;
         int n = send(server, filebuf, bytesread, 0);
         if (n < 0) {
@@ -671,9 +670,9 @@ int uploadtomain(int client, char* destpath, int pathprovided, char* filename) {
     // Check if the directory exists
     if (pathprovided && (stat(destpath, &st) != 0 || !S_ISDIR(st.st_mode))) {
         // If directory does not exist, attempt to create it
-        char newpath[100] = "";
+        char newpath[MAX_LEN] = "";
         int count = 0;
-        char temppath[100];
+        char temppath[MAX_LEN];
         strcpy(temppath, destpath);
         for (char* separator = strtok(temppath, "/"); separator != NULL; separator = strtok(NULL, "/"), count += 1) {
             if (count != 0)
@@ -689,7 +688,7 @@ int uploadtomain(int client, char* destpath, int pathprovided, char* filename) {
     }
 
     int filesize;
-    char filesizebuf[100];
+    char filesizebuf[MAX_LEN];
 
     // Informing client to send size of file
     char* sendmessage = "sendsize";
@@ -700,7 +699,7 @@ int uploadtomain(int client, char* destpath, int pathprovided, char* filename) {
     }
 
     // Get size of file
-    int recbytes = read(client, filesizebuf, 100);
+    int recbytes = read(client, filesizebuf, MAX_LEN);
     if (recbytes < 0) {
         printf("\nError receiving filesize\n");
         return 1;
@@ -719,15 +718,14 @@ int uploadtomain(int client, char* destpath, int pathprovided, char* filename) {
         return 1;
     }
     int totalbytesread = 0;
-    char filebuf[100];
+    char filebuf[MAX_LEN];
 
     char* message = "received";
     send(client, message, strlen(message), 0);
 
     // get file bytes from client
     while (totalbytesread < filesize) {
-        // int bytesread = read(client, filebuf, 100);
-        int bytesread = recv(client, filebuf, 100, 0);
+        int bytesread = recv(client, filebuf, MAX_LEN, 0);
         totalbytesread += bytesread;
         int writebytes = write(fd, filebuf, bytesread);
         if (writebytes < 0) {
@@ -743,7 +741,7 @@ int uploadtomain(int client, char* destpath, int pathprovided, char* filename) {
 int ufilecommand(char* cmd, char* filename, char* dest, int client) {
     char* mainfolder = "~smain";
     char servername[5];
-    char destpath[100];
+    char destpath[MAX_LEN];
     if (strncmp(dest, mainfolder, strlen(mainfolder)) == 0) {
         int pathprovided = 1;
         if (strcmp(dest, mainfolder) == 0) {
@@ -764,7 +762,7 @@ int ufilecommand(char* cmd, char* filename, char* dest, int client) {
         if (strcmp(ext, "txt") == 0) { // if text file needs to be ploaded
             strcpy(servername, "text");
 
-            char command[100];
+            char command[MAX_LEN];
 
             strcpy(command, cmd);
             strcat(command, " ");
@@ -789,7 +787,7 @@ int ufilecommand(char* cmd, char* filename, char* dest, int client) {
             return serverstatus;
         } else if (strcmp(ext, "pdf") == 0) { // if pdf needs to be uploaded
             strcpy(servername, "pdf");
-             char command[100];
+             char command[MAX_LEN];
 
             strcpy(command, cmd);
             strcat(command, " ");
@@ -832,11 +830,11 @@ int ufilecommand(char* cmd, char* filename, char* dest, int client) {
 
 // Function to process client command
 int prcclient(char* userinput, int client) {
-    char cmd[100];
-    char filename[100];
-    char dest[100];
+    char cmd[MAX_LEN];
+    char filename[MAX_LEN];
+    char dest[MAX_LEN];
     char* mainfolder = "~smain";
-    char destpath[100];
+    char destpath[MAX_LEN];
     sscanf(userinput, "%s %s %s", cmd, filename, dest);
     printf("%s, %s, %s\n", cmd, filename, dest);
 

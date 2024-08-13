@@ -306,12 +306,12 @@ void handleServerResponse(int server, char **commandArgv) {
 
 // Function to display files from server for the display command
 int displayfiles(int socket) {
-    char filename[100];
+    char filename[MAXSIZE];
     printf("\nList of files\n");
     int filespresent = 0;
     int sizereceived;
     // Receiving file names present in user specified path from server
-    while(((sizereceived = recv(socket, filename, 100, 0))) > 0) {
+    while(((sizereceived = recv(socket, filename, MAXSIZE, 0))) > 0) {
         filename[sizereceived] = '\0';
         if(strcmp(filename, "complete") == 0) {
             break;
@@ -343,7 +343,7 @@ int uploadfile(int socket, char* filename) {
 
 
     int n;
-    char sendmessage[100];
+    char sendmessage[MAXSIZE];
 
     n= recv(socket, sendmessage, 8, 0);
     if(n < 0) {
@@ -368,12 +368,12 @@ int uploadfile(int socket, char* filename) {
         return 1;
     }
 
-    char readbuf[100];
+    char readbuf[MAXSIZE];
 
     int readbytes;
 
     // reading file and sending bytes to server
-    while ((readbytes = read(fd, readbuf, 100)) > 0) {
+    while ((readbytes = read(fd, readbuf, MAXSIZE)) > 0) {
         n = send(socket, readbuf, readbytes, 0);
         if(n < 0) {
             printf("\nWrite Failed\n");
