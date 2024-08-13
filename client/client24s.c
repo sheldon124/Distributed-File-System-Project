@@ -124,8 +124,8 @@ bool checkTildePath(const char *path){
         return false;  
     }
 
-    //Allow simple ~smain
-    if (path[strlen(path) - 1] != '/' || !strchr(path, '.')) {
+    //Allow simple 
+    if (!strchr(path, '.')) {
         return false;
     }
 
