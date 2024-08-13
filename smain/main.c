@@ -557,7 +557,7 @@ int listfiles(char* userpath, int client) {
             snprintf(new_path, sizeof(new_path), "%s/%s", path, direntry->d_name);
 
         if (direntry->d_type == DT_REG) {
-            printf("File: %s\n", direntry->d_name);
+            printf("%s\n", direntry->d_name);
             int n = send(client, direntry->d_name, strlen(direntry->d_name), 0);
             if(n < 0) {
                 printf("Display to client failed\n");
@@ -876,29 +876,33 @@ int prcclient(char* userinput, int client) {
     return 0;
 }
   
-int main(int argc, char *argv[]){
+int main(int argc, char *argv[]) {
 
 int sd, client, portNumber;
 struct sockaddr_in servAdd;
 
+// Check if the correct arguments number
 if(argc != 2){
 fprintf(stderr,"Call model: %s <Port#>\n",argv[0]);
 exit(0);
 }
-//socket()
+
+// Create socket
 if((sd = socket(AF_INET, SOCK_STREAM, 0))<0){
 fprintf(stderr, "Could not create socket\n");
 exit(1);
 }
 
+// Initialize the server address structure
 servAdd.sin_family = AF_INET;
 servAdd.sin_addr.s_addr = htonl(INADDR_ANY);
 sscanf(argv[1], "%d", &portNumber);
 servAdd.sin_port = htons((uint16_t)portNumber);
 
-//bind
+// Bind socket to server address
 bind(sd, (struct sockaddr *) &servAdd,sizeof(servAdd));
 
+// Listen for incoming connections
 if (listen(sd, 5) < 0) {
     perror("listen failed");
     exit(1);
@@ -906,28 +910,30 @@ if (listen(sd, 5) < 0) {
 
 // To accept a new client and process the command in a new process
 while(1) {
-    
+    // Accept a connection
     client=accept(sd,(struct sockaddr*)NULL,NULL);//accept()
     if(client < 0) {
         perror("Error accepting connection");
         continue;
     }
+    // Create a new process where client is serviced
     int pid = fork();
+    // Child process handles the client
     if (pid == 0) {
     char buff1[MAX_LEN];
-    int bytes_read = read(client, buff1, MAX_LEN);
+    int bytes_read = read(client, buff1, MAX_LEN); // Get command from client
     if (bytes_read < 0) {
         printf("Server: read() failure\n");
         exit(3);
     }
 
-    int success = prcclient(buff1, client);
+    int success = prcclient(buff1, client);  // Process client's command
 
 
     close(client);
     printf("\n");
     exit(0);
-} else if (pid > 0) {
+} else if (pid > 0) { // Parent continues to accept new connection
     close(client);
 }
 }

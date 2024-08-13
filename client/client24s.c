@@ -304,12 +304,13 @@ void handleServerResponse(int server, char **commandArgv) {
     }
 }
 
-//Sheldon
+// Function to display files from server for the display command
 int displayfiles(int socket) {
     char filename[100];
     printf("\nList of files\n");
     int filespresent = 0;
     int sizereceived;
+    // Receiving file names present in user specified path from server
     while(((sizereceived = recv(socket, filename, 100, 0))) > 0) {
         filename[sizereceived] = '\0';
         if(strcmp(filename, "complete") == 0) {
@@ -325,19 +326,20 @@ int displayfiles(int socket) {
     printf("\nNo Files present for the directory\n");
 }
 
-//Sheldon
+// Function to upload file from client to server
 int uploadfile(int socket, char* filename) {
     int fd = open(filename, O_RDWR);
     if(fd < 0) {
         printf("\nfile does not exist\n");
     }
 
+    // Getting size of file
     int filelen = lseek(fd,0,SEEK_END);
     lseek(fd,0,SEEK_SET);
 
     char leninstr[50];
 
-    sprintf(leninstr, "%d", filelen);
+    sprintf(leninstr, "%d", filelen); // converting to string to send to server
 
 
     int n;
@@ -357,6 +359,7 @@ int uploadfile(int socket, char* filename) {
         return 1;
     }
 
+    // receiving confirmation that size is received
     char confirmation[8];
     int recvconfirm = recv(socket, confirmation, 8, 0);
     if(recvconfirm < 0) {
@@ -368,6 +371,8 @@ int uploadfile(int socket, char* filename) {
     char readbuf[100];
 
     int readbytes;
+
+    // reading file and sending bytes to server
     while ((readbytes = read(fd, readbuf, 100)) > 0) {
         n = send(socket, readbuf, readbytes, 0);
         if(n < 0) {
@@ -375,7 +380,6 @@ int uploadfile(int socket, char* filename) {
         }
     }
 
-    printf("\nDone\n");
 
     close(fd);
     return 0;
