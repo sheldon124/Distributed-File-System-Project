@@ -53,6 +53,18 @@ void trimAndRemoveNewLine(char *input){
     }
 }  
 
+// Function to check if file exists
+bool checkIfFileExists(const char *filepath){
+    struct stat fileInfo;
+    int fd = open(filepath, O_RDONLY);
+    if (fd < 0) {
+        return false;
+    }
+
+    close(fd);
+    return true;
+}
+
 // Utility funcion to brek down comands into indivydal commsnds to prepare for execution
 void commandSplitter(char *input, char **commandArgv, int *commandArgc) {
     int index = 0;
@@ -103,7 +115,7 @@ bool checkTildePath(const char *path){
     if(!path) return false;
 
     //Check if path starts with ~smain
-    if (strncmp(path, "~smain/", strlen("~smain/")) != 0) {
+    if (strncmp(path, "~smain", strlen("~smain")) != 0) {
         return false;  
     }
 
@@ -138,6 +150,11 @@ bool checkInput(char **commandArgv, int commandArgc){
         if(!checkTildePath(commandArgv[2])){
             printf("Second command must be a path, like ~smain/folder1/folder2\n");
             printf("Note: path must begin with ~smain \n");
+            return false;
+        }
+
+        if(!checkIfFileExists(commandArgv[1])){
+            printf("File does not exist on client\n");
             return false;
         }
 
