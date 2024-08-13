@@ -21,9 +21,9 @@
 #include <dirent.h>
 #define MAXSIZE 1024
 
-bool txtFilesExist = false; //Global var
+bool txtFilesExist = false;
 
-//Shane WIP
+//Shane Change
 // Utility function to break down commands into indivudal commands to prepare for execution
 void commandSplitter(char *input, char **commandArgv, int *commandArgc) {
     int index = 0;
@@ -42,7 +42,7 @@ void commandSplitter(char *input, char **commandArgv, int *commandArgc) {
     *commandArgc = index; //Assigning the value of index as count ref
 }
 
-//Shane WIP
+//Shane Change
 //Utility function to get the extension of a file by checking it backwards
 const char* getFileExtension(const char *fullPath) {
     const char *pathExt = NULL;
@@ -55,7 +55,6 @@ const char* getFileExtension(const char *fullPath) {
     return pathExt;
 }
 
-//Shane WIP
 //Utility function to extract a file name
 const char* extractFileName(const char* path){
     const char *fileName = NULL;
@@ -68,7 +67,6 @@ const char* extractFileName(const char* path){
     return fileName;
 }
 
-//Shane WIP
 //Utility Function to chck if a file existss
 bool checkIfFileExists(const char *filepath){
     struct stat fileInfo; // Stat func gets directory info
@@ -77,7 +75,6 @@ bool checkIfFileExists(const char *filepath){
     return (stat(filepath, &fileInfo) == 0 && S_ISREG(fileInfo.st_mode)) ? true : false;
 }
 
-//Shane WIP
 //Utility function to construct the full absolute path
 char *constructFullPath(const char *path){
     
@@ -95,7 +92,7 @@ char *constructFullPath(const char *path){
     }
 }
 
-//Shane WIP
+//Shane Change
 //Function to check if a file is present as only .txt files will exist on the main server
 int containsTXTFiles(const char *filePath, const struct stat *FileInfo, int flag, struct FTW *ftwInfo){
     
@@ -161,9 +158,7 @@ void downloadHandler(const char *path, int client){
     }
 }
 
-//Shane WIP
 //Function that tars txt files and transfers it to the main server
-
 void tarHandler(int client){
 
     //Get current working directory of server
@@ -240,8 +235,6 @@ void tarHandler(int client){
     }
 }
 
-//Shane WIP
-//Function that removes text files and informs the main server
 void removeHandler(const char *path, int client){
     const char *fullPath = constructFullPath(path);
 
@@ -267,9 +260,6 @@ void removeHandler(const char *path, int client){
 
 }
 
-
-
-//Sheldon 
 int listfiles(char* userpath, int client) {
     char path[100];
     userpath[0] != '.'? strcpy(path, userpath): strcpy(path, "./");
@@ -320,7 +310,6 @@ int listfiles(char* userpath, int client) {
     return 0;
 }
 
-//Sheldon
 int ufilecommand(char *cmd, char *filename, char *dest, int client) {
     int pathprovided = 1;
     char destpath[100];
@@ -421,6 +410,7 @@ int prcclient(char* inputcommand, int client) {
     else if(strcmp(cmd, "display") == 0) {
         return listfiles(filename, client);
     }
+
 
     //Shane Change 
     int commandArgc  = 0;
