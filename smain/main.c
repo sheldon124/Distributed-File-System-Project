@@ -267,7 +267,7 @@ void removeCFiles(const char *fullPath, int client){
 }
 
 //Shane WIP
-void removeHandler(char **commandArgv, int commandArgc, int client){
+int removeHandler(char **commandArgv, int commandArgc, int client){
 
     //Converting argv into a single command with spaces after each command
     char buffer[MAXSIZE];
@@ -295,14 +295,46 @@ void removeHandler(char **commandArgv, int commandArgc, int client){
             downloadFromServers(buffer, "txt" , client);
         } else if (strcmp(pathExt, ".pdf") == 0) {
             printf("Process for REMOVE .pdf\n");
+            printf("Process for REMOVE .pdf\n");
+            char *mainfolder = "~smain";
+
+            char command[100];
+
+            char path[100];
+            strcpy(path, commandArgv[1] + strlen(mainfolder) + 1);
+            strcpy(command, commandArgv[0]);
+            strcat(command, " ");
+            strcat(command, path);
+            strcat(command, " ");
+
+            int server = connecttoserver(command, "pdf");
+            if (server < 0) {
+                printf("\nError establishing connection to pdf server\n");
+                return -1;
+            }
+            char status[1];
+            int recvstatusbytes = recv(server, status, 1, 0);
+            if(recvstatusbytes < 0) {
+                printf("\nError deleting file\n");
+                close(server);
+                return -1;
+            }
+            printf("%s\n", status);
+            if(status[0] == '0') {
+                printf("\nFile does not exist\n");
+            }
+            else {
+                printf("\nFile removed succesfully from server\n");
+            }
+            close(server);
         }
     }else{
         printf("Invalid file extension provided.\n");
         char *msg = "Invalid file extension provided.";
         write(client, msg, strlen(msg) + 1); // Send Error message to client
-        return;
+        return -1;
     }
-    
+    return 0;
 }
 
 //Shane WIP
@@ -814,7 +846,7 @@ int ufilecommand(char* cmd, char* filename, char* dest, int client) {
     }
 }
 
-int handlecommand(char* userinput, int client) {
+int prcclient(char* userinput, int client) {
     char cmd[100];
     char filename[100];
     char dest[100];
@@ -912,7 +944,7 @@ while(1) {
         exit(3);
     }
 
-    int success = handlecommand(buff1, client);
+    int success = prcclient(buff1, client);
 
 
     close(client);
