@@ -115,11 +115,11 @@ bool checkTildePath(const char *path){
     if(!path) return false;
 
     //Check if path starts with ~smain
-    if (strncmp(path, "~smain", strlen("~smain")) != 0) {
-        return false;  
+    if (strncmp(path, "~smain/", strlen("~smain/")) == 0 || strcmp(path, "~smain") == 0) {
+        return true;  
     }
 
-    return true;
+    return false;
 }
 
 //Utility function to check the user commands wrt operation commands
