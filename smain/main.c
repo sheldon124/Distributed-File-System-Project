@@ -844,7 +844,7 @@ int handlecommand(char* userinput, int client) {
         // }
     }
 
-    //Shane Change 
+    //Shane WIP 
     int commandArgc  = 0;
     char *commandArgv[200]; 
     commandSplitter(userinput, commandArgv, &commandArgc);
