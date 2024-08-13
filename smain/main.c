@@ -124,17 +124,24 @@ void downloadCFiles(const char *fullPath, int client){
         write(client, "dfile", strlen("dfile") + 1);
 
         //Readong file in chnks and sending to client
-        while( ( bytesRead = read(fdSrc, fileBuffer, 1024) ) > 0 ){ //Read up to 1024 bytes and will continue until all bytes read
-            bytesSent = send(client, fileBuffer, bytesRead, 0); //0 is for flag
-            if (bytesSent < 0) {  //0 bytes must not be sent, must always be more then 0
+        int chunksSent = 0;
+        while( ( bytesRead = read(fdSrc, fileBuffer, 1024) ) > 0 ){ //Read up to 1024 bytes in chunks from the server
+            bytesSent = send(client, fileBuffer, bytesRead, 0); //Writing to the dest file
+            if (bytesSent < 0) { //Iff err occurs during send
                 printf("Error in sending file\n");
                 close(fdSrc);
                 return;    
-            } 
+            }else{
+                //Checking file size based on chinks
+                chunksSent = chunksSent + 1;
+                if(chunksSent > 16000){
+                    //printf("File size exceeds 5kb");
+                }
+            }
         }
 
         //Error check
-        printf(bytesRead < 0 ? "Error occured while receiving file from server" : "File succesfullly sent from server.\n");
+        (bytesRead < 0) ? printf("Error occured while receiving file from server\n") : printf("File transfered successfully.\n");
         close(fdSrc);
     }
 }
@@ -167,32 +174,46 @@ void downloadFromServers(char* command, char* servername, int client) {
         write(client, "dfile", strlen("dfile") +1);
 
         //Reed from srver and write t client
-        while( ( bytesRead = read(server, fileBuffer, sizeof(fileBuffer) ) ) > 0 ){ //Read up to 1024 bytes and will continue until all bytes read
-            long int bytesSent = send(client, fileBuffer, bytesRead, 0); //0 is for flag
+        int chunksSent = 0;
+        while( ( bytesRead = read(server, fileBuffer, sizeof(fileBuffer) ) ) > 0 ){ //Read up to 1024 bytes in chunks from the server
+            long int bytesSent = send(client, fileBuffer, bytesRead, 0); //Sendin to the dest file
             if (bytesSent < 0) {  //0 bytes must not be sent, must always be more then 0
                 printf("Error in sending file\n");
                 close(server);
                 return;    
-            } 
+            }else{
+                //Checking file size based on chinks
+                chunksSent = chunksSent + 1;
+                if(chunksSent > 16000){ //16mb
+                    //printf("File size exceeds 16mb\n");
+                }
+            }
         }
         //Error check
-        printf(bytesRead < 0 ? "Error occured while receiving file from server" : "File succesfullly sent to Client.\n");
+        (bytesRead < 0) ? printf("Error occured while receiving file from server\n") : printf("File transfered successfully.\n");
     }
     else if (strstr(serverRes, ".tar")) { //if dtar is received, means it has to expect a download tar file        
         write(client, serverRes, strlen(serverRes) + 1);
         
         //Reed from srver and write t client
-        while( ( bytesRead = read(server, fileBuffer, sizeof(fileBuffer) ) ) > 0 ){ //Read up to 1024 bytes and will continue until all bytes read
-            long int bytesSent = send(client, fileBuffer, bytesRead, 0); //0 is for flag
-            if (bytesSent < 0) {  //0 bytes must not be sent, must always be more then 0
+        int chunksSent = 0;
+        while( ( bytesRead = read(server, fileBuffer, sizeof(fileBuffer) ) ) > 0 ){ //Read up to 1024 bytes in chunks from the server
+            long int bytesSent = send(client, fileBuffer, bytesRead, 0); //Writing to the dest file
+            if (bytesSent < 0) {  //Iff err occurs during write
                 printf("Error in sending file\n");
                 close(server);
                 return;    
-            } 
+            }else{
+                //Checking file size based on chinks
+                chunksSent = chunksSent + 1;
+                if(chunksSent > 16000){ //16mb
+                    //printf("File size exceeds 16mb\n");
+                }
+            }
         }
 
         //Error check
-        printf(bytesRead < 0 ? "Error occured while receiving file from server" : "File succesfullly sent to Client.\n");
+        (bytesRead < 0) ? printf("Error occured while receiving file from server\n") : printf("File transfered successfully.\n");
     }
     else{ //Incase of error mesages
         write(client, serverRes, strlen(serverRes) + 1);
@@ -417,16 +438,23 @@ void tarCFiles(int client){
     long int bytesSent;
 
     //Reading file in chunks and sending to client
-    while( ( bytesRead = read(tarfd, tarBuffer, 1024) ) > 0 ){ //Read up to 1024 bytes and will continue until all bytes read
-        bytesSent = send(client, tarBuffer, bytesRead, 0); //0 is for flag
-        if (bytesSent < 0) {  //0 bytes must not be sent, must always be more then 0
+    int chunksSent = 0;
+    while( ( bytesRead = read(tarfd, tarBuffer, 1024) ) > 0 ){ //Read up to 1024 bytes in chunks from the server
+        bytesSent = send(client, tarBuffer, bytesRead, 0); //send to the client
+        if (bytesSent < 0) {  //Iff err occurs during send
             printf("Error in sending file\n");
             close(tarfd);
             return;    
-        } 
+        }else{
+            //Checking file size based on chinks
+            chunksSent = chunksSent + 1;
+            if(chunksSent > 16000){ //16mb
+                //printf("File size exceeds 16mb\n");
+            }
+        }
     }
     //Error check
-    printf(bytesRead < 0 ? "Error occured while receiving file from server" : "File succesfullly sent from server.\n");
+    (bytesRead < 0) ? printf("Error occured while receiving file from server\n") : printf("File transfered successfully.\n");
 
     close(tarfd);
 }

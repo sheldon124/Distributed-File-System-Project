@@ -24,7 +24,7 @@
 //Glbal Variabe to keep track if .pdf fles exists in the swrver directiry
 bool pdfFilesExist = false; //Global Var
 
-// Utility function to break down commands into indivudal commands to prepare for execution
+// Utility functin to brwak down commands into indivudal commands to prepare for execution
 void commandSplitter(char *input, char **commandArgv, int *commandArgc) {
     int index = 0;
     char *currentCmd;
@@ -143,17 +143,24 @@ void downloadHandler(const char *path, int client){
         write(client, "dfile", strlen("dfile") + 1);
 
         //Readong file in chnks and sending to client
-        while( ( bytesRead = read(fdSrc, fileBuffer, 1024) ) > 0 ){ //Read up to 1024 bytes and will continue until all bytes read
-            bytesSent = send(client, fileBuffer, bytesRead, 0); //0 is for flag
-            if (bytesSent < 0) {  //0 bytes must not be sent, must always be more then 0
+        int chunksSent = 0;
+        while( ( bytesRead = read(fdSrc, fileBuffer, 1024) ) > 0 ){ //Read up to 1024 bytes in chunks from the server
+            bytesSent = send(client, fileBuffer, bytesRead, 0); //Sending
+            if (bytesSent < 0) {  //Iff err occurs during send
                 printf("Error in sending file\n");
                 close(fdSrc);
                 return;    
+            }else{
+                //Checking file size based on chinks
+                chunksSent = chunksSent + 1;
+                if(chunksSent > 16000){ //16mb
+                    //printf("File size exceeds 16mb\n");
+                }
             } 
         }
 
         //Error check
-        printf(bytesRead < 0 ? "Error occured while receiving file from server" : "File succesfullly sent from server.\n");
+        (bytesRead < 0) ? printf("Error occured while receiving file from server\n") : printf("File transfered successfully.\n");
         close(fdSrc);
     }
 }
@@ -227,17 +234,24 @@ void tarHandler(int client){
         
 
         //Reading file in chunks and sending to client
-        while( ( bytesRead = read(tarfd, fileBuffer, 1024) ) > 0 ){ //Read up to 1024 bytes and will continue until all bytes read
-            bytesSent = send(client, fileBuffer, bytesRead, 0); //0 is for flag
-            if (bytesSent < 0) {  //0 bytes must not be sent, must always be more then 0
+        int chunksSent = 0;
+        while( ( bytesRead = read(tarfd, fileBuffer, 1024) ) > 0 ){  //Read up to 1024 bytes in chunks from the server
+            bytesSent = send(client, fileBuffer, bytesRead, 0);  //Sending
+            if (bytesSent < 0) { //Iff err occurs during write
                 printf("Error in sending tar file\n");
                 close(tarfd);
                 return;    
-            } 
+            }else{
+                //Checking file size based on chinks
+                chunksSent = chunksSent + 1;
+                if(chunksSent > 16000){ //16mb
+                    //printf("File size exceeds 16mb\n");
+                }
+            }
         }
 
         //Error check
-        printf(bytesRead < 0 ? "Error occured while receiving file from server" : "File succesfullly sent from server.\n");
+        (bytesRead < 0) ? printf("Error occured while receiving file from server\n") : printf("File transfered successfully.\n");
         close(tarfd);
     }
 }
@@ -426,17 +440,17 @@ int prcclient(char* inputcommand, int client) {
         }
     }
 
-    //Splitting command into individual commands for executionn
+    //Spliting command into indvidual commamds for executionn
     int commandArgc  = 0;
     char *commandArgv[200]; 
     commandSplitter(inputcommand, commandArgv, &commandArgc);
 
-    //Command checks to perform respected operations
+    //Commnd checks to perform respected operations
     if(strcmp(commandArgv[0], "dfile") == 0){ //If command starts with dfile, user wants to download a file
         printf("Processing for dfile in PDF server\n");
        downloadHandler(commandArgv[1], client);
     }
-    else if(strcmp(commandArgv[0], "dtar") == 0){ //If command starts with dfile, user wants to download a file
+    else if(strcmp(commandArgv[0], "dtar") == 0){ //If commnd starts with dfile, user wants to download a file
         printf("Processing for dfile in pdf server\n");
         tarHandler(client);
     }

@@ -17,21 +17,7 @@
 #define PORT 3400
 #define MAXSIZE 1024
 
-//Utility function to check Ip format before program start
-// bool checkIPFormat(const char *ip) {
-//     regex_t regex;
-//     const char *pattern = "^([0-9]{1,3}\\.){3}[0-9]{1,3}$";
-
-//     if(regcomp(&regex, pattern, REG_EXTENDED) == 0){
-//         int verificationResult = regexec(&regex, ip, 0, NULL, 0);
-//         regfree(&regex);
-//         return (verificationResult == 0) ? true : false; 
-//     }else{
-//         return false;
-//     }
-// }
-
-// Utility Fuction to remove the \n and trim te strting end ending white spaces if presnt
+// Utility Fucton to remove the \n and trim te strting end ending white spaces if presnt
 void trimAndRemoveNewLine(char *input){
     if(input[0] != '\0' && input != NULL){ //Check if first character is not empty, n has characters
 
@@ -117,7 +103,7 @@ bool checkTildePath(const char *path){
     if(!path) return false;
 
     //Check if path starts with ~smain
-    if (strncmp(path, "~smain", strlen("~smain")) != 0) {
+    if (strncmp(path, "~smain/", strlen("~smain/")) != 0) {
         return false;  
     }
 
@@ -135,9 +121,9 @@ bool checkInput(char **commandArgv, int commandArgc){
     //Validity Checks
     if(strcmp(commandArgv[0], "ufile") == 0){ //Check validity based on operation command entered
        
-        //Check length as 2 allowed "ufile sample.c  ~smain/folder1/sample.c" 
+        //Check length as 3 allowed "ufile sample.c  ~smain/folder1/sample.c" 
         if(commandArgc > 3){
-            printf("Only 2 arguments are allowed.\n");
+            printf("Only 3 arguments are allowed.\n");
             return false;
         }
 
@@ -180,6 +166,12 @@ bool checkInput(char **commandArgv, int commandArgc){
 
     }  
     else if(strcmp(commandArgv[0], "display") == 0 ){ //Validity check for display command
+        //Check length as 2 allowed "display ~smain/folder1"
+        if(commandArgc > 2){
+            printf("Only 2 arguments are allowed.\n");
+            return false;
+        }
+
         //Check the tilde expansion path
         if(!checkTildePath(commandArgv[1])){
             printf("Second command must be a path, like ~smain/folder1/folder2\n");
@@ -263,17 +255,23 @@ void downloadingFile(int server, const char *filePath){
     }
 
     // Rece9ive data and write into a destination file
-    while ( ( bytesRead = recv(server, buffer, sizeof(buffer), 0)) > 0) { //Read up to 1024 bytes from the server and will continue until all bytes read
-        long int bytesWrite = write(fdDest, buffer, bytesRead); //Writing to the file
-        if (bytesWrite < 0) { //Iff err occurs during read
+    int chunksSent = 0;
+    while ( ( bytesRead = recv(server, buffer, sizeof(buffer), 0)) > 0) { //Read up to 1024 bytes in chunks from the server
+        long int bytesWrite = write(fdDest, buffer, bytesRead); //Writing to the dest file
+        if (bytesWrite < 0) { //Iff err occurs during write
             printf("Error occured when writing to destination file");
             close(fdDest);
             return;
+        }else{
+            //Checking file size based on chinks
+            chunksSent = chunksSent + 1;
+            if(chunksSent > 16000){ //16mb
+                //printf("File size exceeds 16mb\n");
+            }
         }
     }
-
     //If errr occus when readong from the data sent by server
-    printf(bytesRead < 0 ? "Error occured while receiving file from server" : "File transfered successfully.\n");
+    (bytesRead < 0) ? printf("Error occured while receiving file from server\n") : printf("File transfered successfully.\n");
 
     close(fdDest);
 }
@@ -394,13 +392,6 @@ int main(int argc, char *argv[]){
         printf("Please enter command line:%s <IP Address> <Port#>\n",argv[0]);
         exit(0);
     }
-
-    //Checking Ip Address format
-    // if(!checkIPFormat(argv[1])){
-    //     printf("Incorrect IP Address.\n");
-    //     printf("To know your current IP Address in terminal type $ hostname -i \n");
-    //     exit(1);
-    // }
 
 
     //Display available commands
