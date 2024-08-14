@@ -286,6 +286,8 @@ void downloadingFile(int server, const char *filePath){
                 //printf("File size exceeds 16mb\n");
             }
         }
+        // Clear buffer
+        memset(buffer, 0, sizeof(buffer));    
     }
     //If errr occus when readong from the data sent by server
     (bytesRead < 0) ? printf("Error occured while receiving file from server\n") : printf("File transfered successfully.\n");
