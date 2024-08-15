@@ -157,6 +157,9 @@ void downloadHandler(const char *path, int client){
                     //printf("File size exceeds 16mb\n");
                 }
             } 
+
+            // Clear buffer
+            memset(fileBuffer, 0, sizeof(fileBuffer));
         }
 
         //Error check
@@ -248,6 +251,9 @@ void tarHandler(int client){
                     //printf("File size exceeds 16mb\n");
                 }
             }
+
+            // Clear buffer
+            memset(fileBuffer, 0, sizeof(fileBuffer));
         }
 
         //Error check

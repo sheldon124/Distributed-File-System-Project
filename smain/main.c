@@ -138,6 +138,9 @@ void downloadCFiles(const char *fullPath, int client){
                     //printf("File size exceeds 5kb");
                 }
             }
+
+            // Clear buffer
+            memset(fileBuffer, 0, sizeof(fileBuffer));
         }
 
         //Error check
@@ -188,6 +191,9 @@ void downloadFromServers(char* command, char* servername, int client) {
                     //printf("File size exceeds 16mb\n");
                 }
             }
+            
+            // Clear buffer
+            memset(fileBuffer, 0, sizeof(fileBuffer));
         }
         //Error check
         (bytesRead < 0) ? printf("Error occured while receiving file from server\n") : printf("File transfered successfully.\n");
@@ -210,6 +216,9 @@ void downloadFromServers(char* command, char* servername, int client) {
                     //printf("File size exceeds 16mb\n");
                 }
             }
+            
+            // Clear buffer
+            memset(fileBuffer, 0, sizeof(fileBuffer));
         }
 
         //Error check
@@ -452,6 +461,9 @@ void tarCFiles(int client){
                 //printf("File size exceeds 16mb\n");
             }
         }
+        // Clear buffer
+        memset(tarBuffer, 0, sizeof(tarBuffer));
+        
     }
     //Error check
     (bytesRead < 0) ? printf("Error occured while receiving file from server\n") : printf("File transfered successfully.\n");
