@@ -311,10 +311,24 @@ void handleServerResponse(int server, char **commandArgv) {
     //Check for indicators
     if (strcmp(serverRes, "dfile") == 0) { //if dfile is received, means it has to expect a download
         //printf("File transfer initiated by server.\n");
+        
+        //Send acknowledgement to main server
+        const char *ack = "SendFile";
+        if (send(server, ack, strlen(ack), 0) < 0) {
+            printf("Error sending acknowledgment to server\n");
+            return;
+        }
         downloadingFile(server, commandArgv[1]);
     } 
     else if (strstr(serverRes, ".tar")) { //if dtar is received, means it has to expect a download tar file
         //printf("Dtar transfer initiated by server.\n");
+
+        //Send acknowledgement to main server
+        const char *ack = "SendFile";
+        if (send(server, ack, strlen(ack), 0) < 0) {
+            printf("Error sending acknowledgment to server\n");
+            return;
+        }
         downloadingFile(server, serverRes);
     }else{ //Incase server has to send err messages
         printf("Server: %s\n", serverRes);

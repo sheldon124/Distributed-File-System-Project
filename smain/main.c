@@ -123,6 +123,22 @@ void downloadCFiles(const char *fullPath, int client){
         //Sening dfile to client, so clint can move to funvtion for proceing the chunkds it receives.
         write(client, "dfile", strlen("dfile") + 1);
 
+        // Wqait for acknowledgmenwt from the client
+        char ackBuffer[9];
+        if (recv(client, ackBuffer, sizeof(ackBuffer) - 1, 0) < 0) {
+            printf("Client acknowledgement failed\n");
+            close(fdSrc);
+            return;
+        }
+
+        ackBuffer[8] = '\0'; // Nul terwminate the acknowleddgment
+        if (strcmp(ackBuffer, "SendFile") != 0) {
+            printf("Invalid acknwledgment sent by client\n");
+            close(fdSrc);
+            return;
+        }
+        printf("Server allowed to send C File\n");
+
         //Readong file in chnks and sending to client
         int chunksSent = 0;
         while( ( bytesRead = read(fdSrc, fileBuffer, 1024) ) > 0 ){ //Read up to 1024 bytes in chunks from the server
@@ -174,9 +190,32 @@ void downloadFromServers(char* command, char* servername, int client) {
 
     //Of dfile is received, sending to client
     if (strcmp(serverRes, "dfile") == 0){
+
+        // SendINF "dfile" to client and wait for acknowledgment
         write(client, "dfile", strlen("dfile") +1);
 
-        //Reed from srver and write t client
+        char ackBuffer[9];
+        if (recv(client, ackBuffer, sizeof(ackBuffer) - 1, 0) < 0) {
+            printf("Error receiving acknowledgment from client\n");
+            close(server);
+            return;
+        }
+
+        ackBuffer[8] = '\0';
+        if (strcmp(ackBuffer, "SendFile") != 0) {
+            printf("Invalid acknowledgment from client\n");
+            close(server);
+            return;
+        }
+
+        // Forwared the acknowledgment to the PDF servere
+        if (send(server, ackBuffer, strlen(ackBuffer), 0) < 0) {
+            printf("Error sending acknowledgment to PDF/TXT server\n");
+            close(server);
+            return;
+        }
+
+        //Forward the file from PDF server to client
         int chunksSent = 0;
         while( ( bytesRead = read(server, fileBuffer, sizeof(fileBuffer) ) ) > 0 ){ //Read up to 1024 bytes in chunks from the server
             long int bytesSent = send(client, fileBuffer, bytesRead, 0); //Sendin to the dest file
@@ -198,10 +237,33 @@ void downloadFromServers(char* command, char* servername, int client) {
         //Error check
         (bytesRead < 0) ? printf("Error occured while receiving file from server\n") : printf("File transfered successfully.\n");
     }
-    else if (strstr(serverRes, ".tar")) { //if dtar is received, means it has to expect a download tar file        
+    else if (strstr(serverRes, ".tar")) { //if dtar is received, means it has to expect a download tar file      
+
+        // Sendingg tar file name to client and wait for acknowledgment
         write(client, serverRes, strlen(serverRes) + 1);
-        
-        //Reed from srver and write t client
+
+        char ackBuffer[9];
+        if (recv(client, ackBuffer, sizeof(ackBuffer) - 1, 0) < 0) {
+            printf("Error receiving acknowledgment from client\n");
+            close(server);
+            return;
+        }
+
+        ackBuffer[8] = '\0';
+        if (strcmp(ackBuffer, "SendFile") != 0) {
+            printf("Invalid acknowledgment from client\n");
+            close(server);
+            return;
+        }
+
+        // Forw2ard the acknowledgment to the PDF server
+        if (send(server, ackBuffer, strlen(ackBuffer), 0) < 0) {
+            printf("Error sending acknowledgment to PDF/TEXT server\n");
+            close(server);
+            return;
+        }
+
+        // ForwardingE the tar filee from PDF server to client
         int chunksSent = 0;
         while( ( bytesRead = read(server, fileBuffer, sizeof(fileBuffer) ) ) > 0 ){ //Read up to 1024 bytes in chunks from the server
             long int bytesSent = send(client, fileBuffer, bytesRead, 0); //Writing to the dest file
@@ -441,6 +503,22 @@ void tarCFiles(int client){
 
     //File transfer indicator so client know tar file download is about to come in
     write(client, tarFileName, strlen(tarFileName) + 1);
+
+    // Waitt for acknowledgent from the clent
+    char ackBuffer[9];
+    if (recv(client, ackBuffer, sizeof(ackBuffer) - 1, 0) < 0) {
+        printf("Client acknowledgement failed\n");
+        close(tarfd);
+        return;
+    }
+
+    ackBuffer[8] = '\0'; // Null termisnate the acknowledgment
+    if (strcmp(ackBuffer, "SendFile") != 0) {
+        printf("Invalid acknwledgment sent by client\n");
+        close(tarfd);
+        return;
+    }
+    printf("Server allowed to send .c tar File\n");
 
     char tarBuffer[MAX_LEN];
     long int bytesRead;

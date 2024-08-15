@@ -142,6 +142,21 @@ void downloadHandler(const char *path, int client){
         //Sening dfile to client, so clint can move to funvtion for proceing the chunkds it receives.
         write(client, "dfile", strlen("dfile") + 1);
 
+        // Wait foer acknowledgmnt from the main server
+        char ackBuffer[9];
+        if (recv(client, ackBuffer, sizeof(ackBuffer) - 1, 0) < 0) {
+            printf("Main server acknowledgment failed\n");
+            close(fdSrc);
+            return;
+        }
+
+        ackBuffer[8] = '\0';
+        if (strcmp(ackBuffer, "SendFile") != 0) {
+            printf("Invalid acknowledgment from main server\n");
+            close(fdSrc);
+            return;
+        }
+
         //Reading file in chunks and sending to client
         int chunksSent = 0;
         while( ( bytesRead = read(fdSrc, fileBuffer, 1024) ) > 0 ){ //Read up to 1024 bytes in chunks from the server
@@ -230,6 +245,21 @@ void tarHandler(int client){
 
         //File transfer indicator so client know tar file download is about to come in
         write(client, tarFileName, strlen(tarFileName) + 1);
+
+        // Wait fr acknowleedgment from the main server
+        char ackBuffer[9];
+        if (recv(client, ackBuffer, sizeof(ackBuffer) - 1, 0) < 0) {
+            printf("Main server acknowledgment failed\n");
+            close(tarfd);
+            return;
+        }
+
+        ackBuffer[8] = '\0';
+        if (strcmp(ackBuffer, "SendFile") != 0) {
+            printf("Invalid acknowledgment from main server\n");
+            close(tarfd);
+            return;
+        }
 
         char fileBuffer[1024];
         long int bytesRead;
